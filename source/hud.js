@@ -32,18 +32,6 @@
   hud.NAME_ATTR = "data-name"
   hud.ROLE_ATTR = "role"
 
-  hud.events = eventProperties
-
-  function merge( defaults, options ){
-    var setup = {}, setting
-    options = options || {}
-    for ( setting in defaults ) setup[setting] = defaults[setting];
-    for ( setting in options ) setup[setting] = options[setting];
-    return setup
-  }
-
-  hud.merge = merge
-
   function extend( obj, extension ){
     for( var prop in extension ){
       obj[prop] = extension[prop]
@@ -81,8 +69,6 @@
     return ret
   }
 
-  hud.filterElements = filterElements
-
   function dataset( el, prop, val ){
     if ( el.dataset ) return val == undefined ? el.dataset[prop] : el.dataset[prop] = val
     return val == undefined ? el.getAttribute("data-" + prop) : el.setAttribute("data-" + prop, val)
@@ -91,13 +77,6 @@
   dataset.remove = function ( el, prop ){
     if ( el.dataset ) return delete el.dataset[prop]
     else return el.removeAttribute("data-" + prop)
-  }
-
-  hud.dataset = dataset
-
-  hud.support = {
-    htmlImport: 'import' in document.createElement('link'),
-    templates: 'content' in document.createElement('template')
   }
 
 // ###################### TEMPLATES ######################
@@ -183,8 +162,6 @@
     return templates[id]
   }
 
-  hud.getTemplate = getTemplate
-
   function registerTemplate( el ){
     function renderTemplate(){
       return renderTemplate.template.render.apply(renderTemplate.template, arguments)
@@ -194,22 +171,12 @@
     templates[el.id] = renderTemplate
   }
 
-  hud.filterElements(document.body, function ( node ){
-    if ( node.tagName == "TEMPLATE" ) {
-      registerTemplate(node)
-      return hud.FILTER_IGNORE
-    }
-    return hud.FILTER_SKIP
-  }, true)
-
 // ###################### View ######################
 
   var views = {}
     , VIEW_ATTR = hud.VIEW_ATTR
     , COMPONENT_ATTR = hud.COMPONENT_ATTR
     , NAME_ATTR = hud.NAME_ATTR
-
-  hud.views = views
 
   function addListener( element, type, cb, context, capture ){
     element.addEventListener(type, function ( e ){
@@ -324,8 +291,6 @@
     return def
   }
 
-  hud.renderComponents = renderComponents
-
   /**
    * View
    * The main View constructor
@@ -337,7 +302,6 @@
    * It also has basic support for node manipulation like appending, inserting and removing.
    * */
   function View(){}
-
   View.prototype = {
     element: null,
     isFragment: false,
@@ -435,7 +399,6 @@
     return obj
   }
 
-
   function extendView( name, base, create, render, proto, element, components ){
     function CreateView(){
       if ( !arguments.length ) return
@@ -499,6 +462,23 @@
     }
     return CreateView
   }
+
+  // ###################### API ######################
+
+  hud.filterElements = filterElements
+  hud.getTemplate = getTemplate
+  hud.renderComponents = renderComponents
+  hud.dataset = dataset
+
+  hud.support = {
+    htmlImport: 'import' in document.createElement('link'),
+    templates: 'content' in document.createElement('template')
+  }
+
+  hud.registerEvent = function( eventType ){
+    eventProperties.push(eventType)
+  }
+
   /**
    * CreateView
    * */
@@ -506,11 +486,19 @@
     return extendView(view.name, view.extend||View, view.create, view.render, view.proto, view.components)
   }
 
-  hud.View = View
-
   hud.getView = function ( name ){
     return views[name].create
   }
+
+  // ###################### AUTO RENDER ######################
+
+  if( doc.body ) hud.filterElements(doc.body, function ( node ){
+    if ( node.tagName == "TEMPLATE" ) {
+      registerTemplate(node)
+      return hud.FILTER_IGNORE
+    }
+    return hud.FILTER_SKIP
+  }, true)
 
   return hud
 });
