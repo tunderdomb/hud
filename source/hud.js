@@ -32,11 +32,20 @@
   hud.NAME_ATTR = "data-name"
   hud.ROLE_ATTR = "role"
 
+  function each( arr, f ){
+    for ( var i = -1, l = arr.length; ++i < l; ) {
+      f(arr[i], i, arr)
+    }
+  }
   function extend( obj, extension ){
     for( var prop in extension ){
       obj[prop] = extension[prop]
     }
     return obj
+  }
+
+  function merge( obj, ext ){
+    return extend(extend({}, obj), ext)
   }
 
   /**
@@ -256,7 +265,7 @@
     view = view||def
     var cache = {}
     filterElements(el, function render( node ){
-      var name, viewName, component, blueprint
+      var name, viewName, component, blueprint, componentName
 
       // render sub views first so their components won't get confused to first level ones
       if ( viewName = node.getAttribute(VIEW_ATTR) ) {
@@ -285,6 +294,8 @@
             component = renderComponent(node, def[name], view)
           }
           view[name] = cache[name] > 1 ? view[name].concat(component) : cache[name] ? [view[name], component] : component
+          componentName = node.getAttribute(NAME_ATTR)
+          if( componentName ) view[componentName] = component
           cache[name] = cache[name] ? ++cache[name] : 1
         }
         else {
@@ -308,12 +319,6 @@
    * */
   function View(){}
   View.prototype = {
-    element: null,
-    isFragment: false,
-    onCreate: null,
-    onRendered: null,
-    superOnCreate: null,
-    superOnRendered: null,
     getContent: function (){
       if ( this.isFragment ) {
         var frag = doc.createDocumentFragment()
@@ -392,6 +397,7 @@
    * */
   function extendComponents( obj, ext ){
     var val
+    obj = extend({}, obj)
     for ( var prop in ext ) {
       val = ext[prop]
       if ( obj[prop] != undefined && typeof obj[prop] != "function" ) {
@@ -440,18 +446,36 @@
     }
     V.prototype = {}
 
-    var onCreates = create ? [create] : []
-      , onRenders = render ? [render] : []
+    var onCreates = []
+      , onRenders = []
+      , extendBase
 
-    base = defs[base]
     proto = proto || {}
-
     if( base ) {
-      onCreates = base.superCreate.concat(create||[])
-      onRenders = base.superRender.concat(render||[])
-      components = extendComponents(extend({}, base.superComponents), components)
-      extend(V.prototype, base.proto)
+      extendBase = function ( b ){
+        b = defs[b]
+        if( !b ) return
+        if( b.superCreate ) onCreates = onCreates.concat(b.superCreate)
+        if( b.superRender ) onRenders = onRenders.concat(b.superRender)
+        components = extendComponents(b.superComponents, components)
+        extend(V.prototype, b.proto)
+        proto = merge(b.proto,  proto)
+      }
+      if( typeof base == "string" ){
+        extendBase(base)
+      }
+      else {
+        each(base, extendBase)
+      }
+//      onCreates = base.superCreate.concat(create||[])
+//      onRenders = base.superRender.concat(render||[])
+//      components = extendComponents(extend({}, base.superComponents), components)
+//      extend(V.prototype, base.proto)
+//      proto = extend(base.proto,  proto)
     }
+
+    if( create ) onCreates.push(create)
+    if( render ) onRenders.push(render)
 
 
 //    extend(V.prototype, components)
