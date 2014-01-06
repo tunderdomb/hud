@@ -145,7 +145,7 @@
       var clone = this.clone(false)
         , v = hud.views[this.name]
         , args = [].slice.call(arguments)
-      if ( view && view.view && hud.views[view.view] ) {
+      if ( view && hud.views[view] ) {
         v = view
         args.shift()
       }
@@ -174,6 +174,7 @@
 // ###################### View ######################
 
   var views = {}
+    , defs = {}
     , VIEW_ATTR = hud.VIEW_ATTR
     , COMPONENT_ATTR = hud.COMPONENT_ATTR
     , NAME_ATTR = hud.NAME_ATTR
@@ -251,8 +252,10 @@
    *
    * */
   function renderComponents( el, def, view ){
+    def = def||{}
     view = view||def
-    filterElements(el, function ( node ){
+    var cache = {}
+    filterElements(el, function render( node ){
       var name, viewName, component, blueprint
 
       // render sub views first so their components won't get confused to first level ones
@@ -263,24 +266,26 @@
         else {
           console.warn("Missing name for nested View: ", node, "inside", el)
         }
-        def[name] = instantiateView.apply(null, [viewName, node].concat(blueprint))
+        view[name] = instantiateView.apply(null, [viewName, node].concat(blueprint))
+//        cache = {}
         return FILTER_IGNORE
       }
       // render view components
       name = node.getAttribute(COMPONENT_ATTR)
       if ( name ) {
-        if ( def[name] != undefined ) {
-          if ( (typeof def[name] != "string") && (typeof def[name] != "function") && def[name].length ) {
+        if ( def[name] !== undefined ) {
+          if ( def[name] && (typeof def[name] != "string") && (typeof def[name] != "function") && def[name].length ) {
             var l = def[name].length
               , i = -1
             while ( ++i < l ) {
-              component = renderComponent(node, def[name][i], def)
+              component = renderComponent(node, def[name][i], view)
             }
           }
           else {
-            component = renderComponent(node, def[name], def)
+            component = renderComponent(node, def[name], view)
           }
-          view[name] = component
+          view[name] = cache[name] > 1 ? view[name].concat(component) : cache[name] ? [view[name], component] : component
+          cache[name] = cache[name] ? ++cache[name] : 1
         }
         else {
           view[name] = node
@@ -408,15 +413,6 @@
     function V( el ){
       var args = [].slice.call(arguments, 1)
         , i, l
-
-      for ( i = -1, l = onCreates.length; ++i < l; ) {
-        onCreates[i].apply(this, args)
-      }
-      // render components
-      if ( element ) {
-        renderComponent(el, element, this)
-      }
-      renderComponents(el, components, this)
       // assign element
       if ( el instanceof DocumentFragment ) {
         this.isFragment = true
@@ -428,37 +424,49 @@
       else {
         this.element = el
       }
+
+      for ( i = -1, l = onCreates.length; ++i < l; ) {
+        onCreates[i].apply(this, args)
+      }
+      // render components
+      if ( element ) {
+        renderComponent(el, element, this)
+      }
+      renderComponents(el, components, this)
       // call onRendered()
       for ( i = -1, l = onRenders.length; ++i < l; ) {
         onRenders[i].apply(this, args)
       }
     }
+    V.prototype = {}
 
-    var onCreates = []
-      , onRenders = []
+    var onCreates = create ? [create] : []
+      , onRenders = render ? [render] : []
+
+    base = defs[base]
+    proto = proto || {}
 
     if( base ) {
       onCreates = base.superCreate.concat(create||[])
       onRenders = base.superRender.concat(render||[])
+      components = extendComponents(extend({}, base.superComponents), components)
+      extend(V.prototype, base.proto)
     }
 
-    proto = proto || {}
-    components = extendComponents(base.superComponents, components)
 
-    V.prototype = {}
-    extend(V.prototype, base.proto)
-    extend(V.prototype, components)
+//    extend(V.prototype, components)
+    extend(V.prototype, proto)
     V.prototype.constructor = create
-    V.prototype.super = base.proto
 
     if ( name ) {
-      views[name] = {
+      defs[name] = {
         create: CreateView,
         proto: proto,
         superCreate: onCreates,
         superRender: onRenders,
         superComponents: components
       }
+      views[name] = CreateView
     }
     return CreateView
   }
@@ -483,7 +491,7 @@
    * CreateView
    * */
   hud.createView = function( view ){
-    return extendView(view.name, view.extend||View, view.create, view.render, view.proto, view.components)
+    return extendView(view.name, view.base||View, view.create, view.render, view.prototype, view.element, view.components)
   }
 
   hud.getView = function ( name ){
