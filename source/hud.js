@@ -473,6 +473,9 @@
 //      extend(V.prototype, base.proto)
 //      proto = extend(base.proto,  proto)
     }
+    else {
+      extend(V.prototype, View.prototype)
+    }
 
     if( create ) onCreates.push(create)
     if( render ) onRenders.push(render)
@@ -515,7 +518,7 @@
    * CreateView
    * */
   hud.createView = function( view ){
-    return extendView(view.name, view.base||View, view.create, view.render, view.prototype, view.element, view.components)
+    return extendView(view.name, view.base, view.create, view.render, view.prototype, view.element, view.components)
   }
 
   hud.getView = function ( name ){
