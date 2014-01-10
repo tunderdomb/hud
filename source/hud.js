@@ -281,27 +281,28 @@
       }
       // render view components
       name = node.getAttribute(COMPONENT_ATTR)
-      if ( name ) {
-        if ( def[name] !== undefined ) {
-          if ( def[name] && (typeof def[name] != "string") && (typeof def[name] != "function") && def[name].length ) {
-            var l = def[name].length
-              , i = -1
-            while ( ++i < l ) {
-              component = renderComponent(node, def[name][i], view)
-            }
+      if( !name ) return FILTER_SKIP
+      if ( def[name] !== undefined ) {
+        if ( def[name] && (typeof def[name] != "string") && (typeof def[name] != "function") && def[name].length ) {
+          var l = def[name].length
+            , i = -1
+          while ( ++i < l ) {
+            component = renderComponent(node, def[name][i], view)
           }
-          else {
-            component = renderComponent(node, def[name], view)
-          }
-          view[name] = cache[name] > 1 ? view[name].concat(component) : cache[name] ? [view[name], component] : component
-          componentName = node.getAttribute(NAME_ATTR)
-          if( componentName ) view[componentName] = component
-          cache[name] = cache[name] ? ++cache[name] : 1
         }
         else {
-          view[name] = node
+          component = renderComponent(node, def[name], view)
         }
       }
+      else {
+        component = node
+      }
+      view[name] = cache[name] > 1
+        ? view[name].concat(component) : cache[name]
+        ? [view[name], component] : component
+      componentName = node.getAttribute(NAME_ATTR)
+      if( componentName ) view[componentName] = component
+      cache[name] = cache[name] ? ++cache[name] : 1
       return FILTER_SKIP
     }, true)
     return def
