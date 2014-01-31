@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title></title>
+</head>
+<body>
+
+<div role="tabset">
+  <div role="tablist">
+    <button role="tab">one</button>
+    <button role="tab">two</button>
+    <button role="tab">three</button>
+  </div>
+  <div role="tabpool">
+    <div role="tabpanel">Deus, rector, et sectam.</div>
+    <div role="tabpanel">Est bassus idoleum, cesaris.</div>
+    <div role="tabpanel">
+      <div role="autocomplete">
+        <input role="input" type="text" autofocus="true"/>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript" src="../src/hud.js"></script>
+<script type="text/javascript" src="../src/widgets/tabset.js"></script>
+<script type="text/javascript" src="../src/widgets/autocomplete.js"></script>
+<script type="text/javascript" src="../src/events/type.js"></script>
+<script type="text/javascript" src="../src/events/hover.js"></script>
+<script type="text/javascript">
+  hud.render(document.body)
+</script>
+</body>
+</html>
