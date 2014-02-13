@@ -1,29 +1,20 @@
-var hud = (function( f ){
-  return f({}, ({}).undefined)
-}(function( hud, undefined ){
+var hud = (function ( f ){
+  return f({})
+}(function ( hud ){
 
-  var eventNames = [
-    "click", "dblclick", "mousedown", "mouseup", "mouseover", "mousemove", "mouseout",
-    "contextmenu", "selectstart",
-    "drag", "dragstart", "dragenter", "dragover", "dragleave", "dragend", "drop",
-    "keydown", "keypress", "keyup",
-    "load", "unload", "abort", "error", "resize", "scroll",
-    "select", "change", "submit", "reset", "focus", "blur", "beforeeditfocus",
-    "focusin", "focusout", "DOMActivate",
-    "DOMSubtreeModified", "DOMNodeInserted", "DOMNodeRemoved", "DOMNodeRemovedFromDocument",
-    "DOMNodeInsertedIntoDocument", "DOMAttrModified", "DOMCharacterDataModified",
-    "touchstart", "touchend", "touchmove", "touchenter", "touchleave", "touchcancel",
-    "cut", "copy", "paste", "beforecut", "beforecopy", "beforepaste",
-    "afterupdate", "beforeupdate", "cellchange", "dataavailable", "datasetchanged", "datasetcomplete", "errorupdate",
-    "rowenter", "rowexit", "rowsdelete", "rowinserted",
-    "beforeprint", "afterprint", "propertychange", "filterchange", "readystatechange", "losecapture"
-  ]
+  function each( arr, f, context ){
+    for ( var i = -1, l = arr.length; ++i < l; ) {
+      if ( f.call(context, arr[i], i, arr) === false ) return false
+    }
+    return true
+  }
 
-  var customEvents = {}
-
-  var roles = {}
-    , widgets = {}
-    , templates = {}
+  function extend( obj, extension ){
+    for ( var prop in extension ) {
+      obj[prop] = extension[prop]
+    }
+    return obj
+  }
 
   var FILTER_PICK = 1
     , FILTER_SKIP = 2
@@ -38,8 +29,9 @@ var hud = (function( f ){
    * Ignored nodes won't have their child nodes iterated recursively.
    * The root element will not be checked with the filter, only its child nodes.
    * */
-  function filterElements( element, filter, deep ){
-    var children = element.children || element
+  function filterElements( element, filter, deep, includeChildNodes ){
+    var childTypes = includeChildNodes ? "childNodes" : "children"
+      , children = element[childTypes] || element
       , i = -1
       , l = children.length
       , ret = []
@@ -49,17 +41,17 @@ var hud = (function( f ){
       switch ( filter(children[i]) ) {
         case FILTER_PICK:
           ret.push(children[i])
-          if ( deep && i<l && children[i].children.length ) {
+          if ( deep && i < l && children[i][childTypes].length ) {
             stack.push([children, i, l])
-            children = children[i].children
+            children = children[i][childTypes]
             i = -1
             l = children.length
           }
           break
         case FILTER_SKIP:
-          if ( deep && i<l && children[i].children.length ) {
+          if ( deep && i < l && children[i][childTypes].length ) {
             stack.push([children, i, l])
-            children = children[i].children
+            children = children[i][childTypes]
             i = -1
             l = children.length
           }
@@ -69,7 +61,7 @@ var hud = (function( f ){
         case FILTER_STOP:
           return ret
       }
-      if ( stack.length && i+1>=l ) {
+      while ( stack.length && i + 1 >= l ) {
         children = stack.pop()
         i = children[1]
         l = children[2]
@@ -79,394 +71,377 @@ var hud = (function( f ){
     return ret
   }
 
-  function each( arr, f ){
-    for ( var i = -1, l = arr.length; ++i < l; ) {
-      if ( f(arr[i], i, arr) === false ) return
+  function splice( str, start, end, value ){
+    return str.substr(0, start) + value + str.substr(start + end)
+  }
+
+  function Prop( node, attr, start, end ){
+    this.node = node
+    this.attr = attr
+    this.start = start
+    this.end = end
+    this.value = ""
+    this.next = null
+    this.clear()
+  }
+
+  Prop.prototype = {
+    set: function ( value ){
+      if ( this.node.hasAttribute && this.node.hasAttribute(this.attr) ) {
+        this.node.setAttribute(this.attr, splice(this.node.getAttribute(this.attr), this.start, this.end, ""))
+        this.node.setAttribute(this.attr, splice(this.node.getAttribute(this.attr), this.start, this.start, value))
+      }
+      else if ( this.attr in this.node ) {
+        this.node[this.attr] = splice(this.node[this.attr], this.start, this.end, "")
+        this.node[this.attr] = splice(this.node[this.attr], this.start, this.start, value)
+      }
+      else {
+        throw new Error("Invalid attribute '" + this.attr + "' on Element.")
+      }
+      this.end = this.start + value.length
+      this.shift(value.length - this.value)
+      this.value = value
+    },
+    /**
+     * Shifting the start and end offset ensures that changing a value
+     * before this on in the same node updates and maintains the integrity of offsets
+     * */
+    shift: function ( offset ){
+      if ( !offset || !this.next ) return
+      this.next.start += offset
+      this.next.end += offset
+      this.next.shift(offset)
+    },
+    clear: function (){
+      if ( this.node.hasAttribute && this.node.hasAttribute(this.attr) ) {
+        this.node.setAttribute(this.attr, splice(this.node.getAttribute(this.attr), this.start, this.end, ""))
+      }
+      else if ( this.attr in this.node ) {
+        this.node[this.attr] = splice(this.node[this.attr], this.start, this.end, "")
+      }
+      else {
+        throw new Error("Invalid attribute '" + this.attr + "' on Element.")
+      }
+      this.end = this.start
+      this.shift(-this.value.length)
+      this.value = ""
     }
   }
 
-  function extend( obj, extension ){
-    for( var prop in extension ){
-      obj[prop] = extension[prop]
+  /**
+   * Collect template properties from a node attribute
+   * This builds a chain of properties whose values will maintain
+   * offset integrity among themselves.
+   * */
+  function matchProps( values, node, attr ){
+    var match = true
+      , prop
+      , lastProp = null
+    while ( match ) {
+      match = node[attr].match(/{{(.+?)}}/)
+      if ( match ) {
+        prop = match[1]
+        prop = values[prop] = new Prop(node, attr, match.index, match[0].length)
+        if ( lastProp ) lastProp.next = prop
+        lastProp = prop
+      }
     }
-    return obj
-  }
-  function extendCallback( obj, extension, callback ){
-    for( var prop in extension ){
-      obj[prop] = extension[prop]
-      callback(prop, obj[prop], extension[prop])
-    }
-    return obj
   }
 
-  function merge( obj, ext ){
-    return extend(extend({}, obj), ext)
+  function Data( element ){
+    var values = this.values = {}
+    filterElements(element, function ( node ){
+      // treat each attribute as
+      if ( node.nodeType != Element.TEXT_NODE ) {
+        // don't include nested roles
+        if ( node.hasAttribute("role") ) return FILTER_IGNORE
+        each(node.attributes, function ( attr ){
+          matchProps(values, attr, "value")
+        })
+        return FILTER_SKIP
+      }
+      // and empty nodes
+      if ( !node.textContent ) return FILTER_SKIP
+      matchProps(values, node, "textContent")
+      return FILTER_SKIP
+    }, true, true)
   }
 
-  function mixin( base, args ){
-    args = [].slice.call(arguments)
-    base = args.shift()
-    base.prototype = base.prototype || {}
-    each(args, function( arg ){
-      extend(base.prototype, arg.prototype||arg)
+  Data.prototype = {
+    set: function ( prop, value ){
+      if ( this.values && this.values[prop] ) this.values[prop].set(value)
+      return this
+    },
+    get: function ( prop ){
+      if ( this.values && this.values[prop] ) return this.values[prop].value
+      return null
+    },
+    has: function ( prop ){
+      return !!this.values && !!this.values[prop]
+    },
+    clear: function ( prop ){
+      if ( this.values && this.values[prop] ) this.values[prop].clear()
+      return this
+    }
+  }
+
+  function Radio(){
+    this.channels = {}
+  }
+
+  Radio.prototype = {
+    listen: function ( channel, listener ){
+      if ( this.channels )
+        (this.channels[channel] || (this.channels[channel] = [])).push(listener)
+      return this
+    },
+    unlisten: function ( channel, listener ){
+      if ( this.channels == undefined ) return this
+      channel = this.channels[channel]
+      if ( !channel ) return
+      var i = this.channels[channel].indexOf(listener)
+      if ( !!~i ) channel.splice(i, 1)
+      return this
+    },
+    broadcast: function ( channel, message ){
+      if ( this.channels == undefined ) return this
+      channel = this.channels[channel]
+      if ( !channel ) return this
+      message = [].slice.call(arguments, 1)
+      each(channel, function ( listener ){
+        listener.apply(this, message)
+      }, this)
+      return this
+    }
+  }
+
+  function Role( element, def, init ){
+    if ( typeof element == "string" ) {
+      element = hud.role.find(element)
+    }
+    if ( !element ) return
+    this.element = element
+    this.dataset = hud.dataset(element)
+    this.events = {}
+    Data.call(this, element)
+    Radio.call(this)
+    if ( def ) def.call(this, element, init || {})
+    if ( typeof init == "function" ) init.call(this, element)
+  }
+
+  Role.prototype = {
+    find: function ( name ){
+      return hud.role.find(name, this.element)
+    },
+    findAll: function ( name ){
+      return hud.role.findAll(name, this.element)
+    },
+    role: function ( name ){
+      var element = this.find(name)
+      if ( !element ) return null
+      return hud.role(element)
+    },
+    spawn: function ( name, elements ){
+      if ( !elements ) {
+        elements = elements || name
+        name = Role
+      }
+      if ( typeof elements == "string" ) {
+        elements = hud.role.findAll(elements, this.element)
+      }
+      return hud.role.spawn(name, elements)
+    },
+    data: function ( data ){
+      for ( var prop in data ) {
+        if ( data.hasOwnProperty(prop) ) this.set(prop, data[prop])
+      }
+    },
+    on: function ( event, listener ){
+      function hook(){
+        listener.apply(role, arguments)
+      }
+
+      (this.events[event] || (this.events[event] = [])).push([listener, hook])
+      var role = this
+      this.element.addEventListener(event, hook, false)
+      return this
+    },
+    off: function ( event, listener ){
+      var role = this
+      if( !this.events[event] || !this.events[event].length ) return
+      each(this.events[event], function ( l ){
+        if ( l[0] == listener ) {
+          role.element.removeEventListener(event, l[1], false)
+          return false
+        }
+        return true
+      })
+      return this
+    },
+    once: function( event, listener ){
+      this.on(event, function cb(  ){
+        listener.apply(this, arguments)
+        this.off(event, cb)
+      })
+    }
+  }
+  extend(Role.prototype, Data.prototype)
+  extend(Role.prototype, Radio.prototype)
+
+  function RoleList( name, elements, init ){
+    var list = this.elements = []
+
+    if ( !elements ) return
+
+    if ( typeof elements == "string" ) {
+      elements = hud.role.findAll(elements)
+    }
+
+    var role = roles[name] || name
+    if ( !role ) return
+
+    each(elements, function ( el, i ){
+      list[i] = new role(el, init)
     })
   }
 
-  function defineConstructor( def, mixin, isWidget ){
-    function renderComponent(  ){
-      return spawn(def, mixin, [].slice.call(arguments))
-    }
-    def.constructor = def.constructor || function(  ){}
-    renderComponent.prototype = def.constructor.prototype = def = merge(mixin.prototype, def)
-    renderComponent.prototype.constructor = def.constructor
-    if ( isWidget ) {
-      def.constructor.roles = {}
-      renderComponent.defineRole = function( name, roleDef ){
-        if( roleDef == undefined ) {
-          roleDef = name
-          name = roleDef.constructor.name.toLowerCase()
-        }
-        def.constructor.roles[name] = defineConstructor(roleDef, Role)
-        return renderComponent
-      }
-    }
-    return renderComponent
-  }
-
-  function spawn( def, base, args ){
-    var obj = Object.create(def.prototype)
-    base.apply(obj, args)
-    def.prototype.constructor.apply(obj, args)
-    return obj
-  }
-
-  function renderComponents( root ){
-    filterElements(root, function( el ){
-      var roleAttr = el.getAttribute("role")
-      if( !roleAttr ) return FILTER_SKIP
-      each(roleAttr.trim().split(/\s+/), function( r ){
-        if( widgets[r] ) {
-          spawn(widgets[r], Widget, [el])
-        }
+  RoleList.prototype = {
+    data: function ( data ){
+      each(this.elements, function ( el ){ el.data(data) })
+      this.broadcast("change", data)
+      return this
+    },
+    set: function ( prop, value ){
+      each(this.elements, function ( el ){ el.set(prop, value) })
+      this.broadcast("change:prop", value)
+      return this
+    },
+    get: function ( prop ){
+      var values = []
+      each(this.elements, function ( el ){ values.push(el.get(prop)) })
+      return values
+    },
+    has: function ( prop ){
+      return each(this.elements, function ( el ){ el.has(prop) })
+    },
+    clear: function ( prop ){
+      each(this.elements, function ( el ){ el.clear(prop)})
+      this.broadcast("clear", prop)
+      return this
+    },
+    listen: function ( channel, listener ){
+      each(this.elements, function ( el ){ el.listen(channel, listener) })
+      return this
+    },
+    unlisten: function ( channel, listener ){
+      each(this.elements, function ( el ){ el.unlisten(channel, listener) })
+      return this
+    },
+    broadcast: function ( channel, message ){
+      each(this.elements, function ( el ){ el.broadcast.apply(el, arguments) })
+      return this
+    },
+    on: function ( event, listener ){
+      each(this.elements, function ( el ){ el.on(event, listener) })
+      return this
+    },
+    off: function ( event, listener ){
+      each(this.elements, function ( el ){ el.off(event, listener) })
+      return this
+    },
+    each: function ( f ){
+      each(this.elements, function ( role ){
+        f(role)
       })
-      return FILTER_SKIP
-    }, true)
+    },
+    indexOf: function ( search ){
+      var i = -1
+      each(this.elements, function ( role, ii ){
+        if ( role.element == search || role == search ) {
+          i = ii
+          return false
+        }
+        return true
+      })
+      return i
+    }
   }
 
-  function findComponents( rootEl, def, name, base, roleArgs ){
-    var spawned = []
-    if( def == undefined ) return null
-    filterElements(rootEl, function( el ){
-      var roleAttr = el.getAttribute("role")
-      if ( roleAttr && !!~roleAttr.split(/\s+/).indexOf(name) ) {
-        spawned.push(spawn(def, base, [el].concat(roleArgs)))
-        return FILTER_IGNORE
+  var roles = {}
+
+  hud.dataset = function ( element ){
+    var dataset = {
+      set: function( property, value ){
+        element.setAttribute("data-"+property, value||"")
       }
-      return FILTER_SKIP
-    }, true)
-    return spawned
+    }
+    each(element.attributes, function ( attr ){
+      if ( /^data-/.test(attr.name) ) {
+        var name = attr.name.replace(/^data-/, "").toLowerCase().replace(/-(.)/g, function ( m, g ){
+          return g.toUpperCase()
+        })
+        switch ( true ) {
+          case /^\s*\d+\s*$/.test(attr.value):
+            dataset[name] = parseInt(attr.value)
+            break
+          case /^\s*\d*\.\d+\s*$/.test(attr.value):
+            dataset[name] = parseFloat(attr.value)
+            break
+          case /^\s*true\s*$/.test(attr.value):
+            dataset[name] = true
+            break
+          case /^\s*false\s*$/.test(attr.value):
+            dataset[name] = false
+            break
+          default:
+            dataset[name] = attr.value
+        }
+      }
+    })
+    return dataset
   }
 
-  function findComponent( rootEl, def, name, base, roleArgs ){
-    var spawned = null
-    if( def == undefined ) return null
-    filterElements(rootEl, function( el ){
-      var roleAttr = el.getAttribute("role")
-      if ( roleAttr && !!~roleAttr.split(/\s+/).indexOf(name) ) {
-        spawned = spawn(def, base, [el].concat(roleArgs))
+  hud.role = function ( element, init ){
+    return new Role(element, init)
+  }
+
+  hud.role.define = function ( name, def, proto ){
+    function R( element, init ){
+      if ( this instanceof R ) Role.call(this, element, def, init)
+      else return new Role(element, def, init)
+    }
+
+    R.prototype = Role.prototype
+    if ( proto ) extend(R.prototype, proto)
+    return roles[name] = R
+  }
+
+  hud.role.find = function ( name, root ){
+    var role = null
+    root = root || document.body
+    filterElements(root, function ( el ){
+      if ( el.getAttribute("role") == name ) {
+        role = el
         return FILTER_STOP
       }
       return FILTER_SKIP
     }, true)
-    return spawned
+    return role
   }
 
-  function EventData( data ){
-    this.data = data
-  }
-  EventData.prototype = {
-    cancelled: false,
-    cancel: function(  ){
-      this.cancelled = true
-    }
-  }
-
-  function EventMachine(  ){
-    this.listeners = {}
-  }
-  EventMachine.prototype = {
-    listener: function( event, callback ){
-      (this.listeners[event] = this.listeners[event] || []).push(callback)
-    },
-    unlisten: function( event, callback ){
-      if( !this.listeners[event] ) return
-      var i = this.listeners[event].indexOf(callback)
-      if( !~i ) return
-      this.listeners[event].splice(i, 1)
-    },
-    trigger: function( event, msg ){
-      msg = new EventData(msg)
-      var context = this
-      each(this.listeners[event], function( listener ){
-        listener.call(context, msg)
-        return msg.cancelled
-      })
-    },
-    triggerArgs: function( event, args ){
-      var context = this
-      each(this.listeners[event], function( listener ){
-        return listener.apply(context, args)
-      })
-    }
+  hud.role.findAll = function ( name, root, deep ){
+    root = root || document.body
+    return filterElements(root, function ( el ){
+      if ( el.getAttribute("role") == name )
+        return FILTER_PICK
+      return FILTER_SKIP
+    }, deep == undefined ? true : deep)
   }
 
-  function Component(  ){}
-  Component.prototype = {
-    findRoles: function( name, roleArgs ){
-      roleArgs = [].slice.call(arguments)
-      name = roleArgs.shift()
-      var def = this.constructor.roles[name] || roles[name]
-      return findComponents(this.element, def, name, Role, roleArgs)
-    },
-    findRole: function( name, roleArgs ){
-      roleArgs = [].slice.call(arguments)
-      name = roleArgs.shift()
-      var def = this.constructor.roles[name] || roles[name]
-      return findComponent(this.element, def, name, Role, roleArgs)
-    },
-    findWidgets: function( name, roleArgs ){
-      roleArgs = [].slice.call(arguments)
-      name = roleArgs.shift()
-      return findComponents(this.element, widgets, name, Widget, roleArgs)
-    },
-    findWidget: function( name, roleArgs ){
-      roleArgs = [].slice.call(arguments)
-      name = roleArgs.shift()
-      return findComponent(this.element, widgets, name, Widget, roleArgs)
-    },
-    renderComponents: function( ){
-      renderComponents(this.element)
-    }
-  }
-
-  function Widget( element ){
-    this.element = element
-  }
-  mixin(Widget, Component, EventMachine, {})
-
-  function Role( element ){
-    this.element = element
-    var events = applyEvents(this, element)
-    this.removeListener = function( name, callback ){
-      removeListener(events, name, callback)
-    }
-    this.addListener = function( event, callback ){
-      applyEvent(this, this.element, events, event, callback)
-    }
-  }
-  mixin(Widget, Component, EventMachine, {})
-
-  function Template( element ){
-    this.element = element
-  }
-  mixin(Widget, Component, EventMachine, {
-    render: function(  ){
-      return this.element.cloneNode(true)
-    }
-  })
-
-  hud.defineWidget = function( name, def ){
-    if( def == undefined ) {
-      def = name
-      name = def.constructor.name.toLowerCase()
-    }
-    return widgets[name] = defineConstructor(def, Widget, true)
-  }
-  hud.defineRole = function( name, def ){
-    if( def == undefined ) {
-      def = name
-      name = def.constructor.name.toLowerCase()
-    }
-    return roles[name] = defineConstructor(def, Role)
-  }
-  hud.defineTemplate = function( name, def ){
-    templates[name] = defineConstructor(def, Template)
-  }
-
-  hud.render = renderComponents
-
-  function removeListener( events, event, listenerCallback ){
-    each(events[event], function( listener ){
-      if( listener[0] == listenerCallback ) {
-        listener[1]()
-        return false
-      }
-      return true
-    })
-  }
-  function addListener( element, name, context, callback ){
-    if ( customEvents[name] ) {
-      return customEvents[name](element, callback)
-    }
-    else {
-      var listener = function( e ){
-        callback.apply(context, arguments)
-      }
-      element.addEventListener(name, listener, false)
-      return function unlisten(  ){
-        element.removeEventListener(name, listener, false)
-      }
-    }
-  }
-  function registerUnlistener( listneres, event, listenerCallback, unlisten ){
-    (listneres[event] = listneres[event] || []).push([listenerCallback, unlisten])
-  }
-  function applyEvent( context, element, events, event, callback ){
-    var unlisten = addListener(element, event, context, callback)
-    registerUnlistener(events, event, callback, unlisten)
-  }
-  function applyEvents( context, element ){
-    var events = {}
-    each(eventNames, function( event ){
-      var callback = context["on"+event]
-      if ( typeof callback == "function" ) {
-        applyEvent(context, element, events, event, callback)
-      }
-    })
-    return events
-  }
-
-  hud.defineEvent = function( name, def ){
-    eventNames.push(name)
-    customEvents[name] = def
-  }
-
-  function Model( original ){
-    this.original = original||{}
-    this.data = {}
-    this.changes = []
-    this.undone = []
-    extend(this.data, this.original)
-  }
-  mixin(Model, EventMachine, {
-    changed: false,
-    validators: null,
-
-    set: function( params ){
-      var model = this
-      this.undone = []
-      this.changes.push(extend({}, this.data))
-      extendCallback(this.data, params, function( param, old, n ){
-        model.triggerArgs("change:"+param, [old, n])
-      })
-      this.changed = true
-      this.trigger("change", this.changes[this.changes.length-1])
-      return this
-    },
-    get: function( params ){
-      for( var param in params ){
-        params[param] = this.data[param]
-      }
-      return params
-    },
-    has: function( params ){
-      for( var param in params ){
-        if( this.data[param] === undefined ) return false
-      }
-      return true
-    },
-    is: function( params ){
-      for( var param in params ){
-        if( this.data[param] !== params[param] ) return false
-      }
-      return true
-    },
-    remove: function( params ){
-      for( var param in params ){
-        delete params[param]
-        this.trigger("remove:"+param, params[param])
-      }
-      return this
-    },
-    undo: function(  ){
-      if( this.changes.length ) {
-        this.undone.push(this.data = this.changes.pop())
-      }
-      this.trigger("undo")
-      return this
-    },
-    redo: function(  ){
-      if( this.undone.length ) {
-        this.changes.push(this.data = this.undone.pop())
-      }
-      this.trigger("redo")
-      return this
-    },
-    reset: function(  ){
-      this.clear()
-      extend(this.data, this.original)
-      this.trigger("reset")
-      return this
-    },
-    clear: function(  ){
-      this.data = {}
-      this.undone = []
-      this.changes = []
-      this.changed = false
-      return this
-    },
-    clone: function(  ){
-      return new this.constructor(extend({}, this.data))
-    },
-    validateField: function( name, validator ){
-      switch( typeof validator ){
-        case "string":
-          return this.data[name] === validator
-          break
-        case "function":
-          return validator(this.data[name])
-          break
-        default :
-          return validator.test(this.data[name])
-      }
-    },
-    setValidators: function( validators ){
-      this.validators = validators
-      return this
-    },
-    validate: function( validators ){
-      validators = validators||this.validators
-      if ( validators != undefined ) {
-        for( var field in validators ){
-          if( !this.validateField(field, validators[field]) ) return false
-        }
-      }
-      return true
-    },
-    save: function(  ){
-      this.changed = false
-      this.changes = []
-      this.trigger("save")
-      return this
-    },
-    toJSON: function(  ){
-      return this.data
-    },
-    toJSONString: function(  ){
-      return JSON.stringify(this.data)
-    }
-  })
-
-  hud.defineModel = function( def ){
-    def.constructor.prototype = def
-    def.constructor.prototype.constructor = def.constructor
-    extend(def, Model.prototype)
-    return function createModel(  ){
-      var model = Object.create(def)
-      Model.apply(model, arguments)
-      def.constructor.apply(model, arguments)
-      return model
-    }
+  hud.role.spawn = function ( name, element, init ){
+    if ( element instanceof Element || typeof element == "string" )
+      return roles[name](element, init)
+    return new RoleList(name, element, init)
   }
 
   return hud
