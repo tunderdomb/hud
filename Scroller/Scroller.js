@@ -6,11 +6,15 @@
    * Scroller constructor
    * */
   function Scroller( root, options ){
+    options = options || {}
     var S = this
       , doc
       , targets
 
-    this.busy = false
+    S.busy = false
+
+    S.delta = options.delta || S.delta
+    S.fps = options.fps || S.fps
 
     // get the actually scrollable element
     if ( !root.nodeName || !!~["iframe", "#document", "html", "body"].indexOf(root.nodeName.toLowerCase()) ) {
@@ -19,16 +23,18 @@
         ? doc.body
         : doc.documentElement;
     }
-    this.root = root
+    S.root = root
 
-    this.targets = targets = [].slice.call(root.querySelectorAll('[role~="scroller:target"]'))
-    this.links = [].slice.call(root.querySelectorAll('[role~="scroller:link"]')).forEach(function( link ){
+    S.targets = targets = [].slice.call(root.querySelectorAll('[role~="scroller:target"]'))
+    S.links = [].slice.call(root.querySelectorAll('[role~="scroller:link"]')).forEach(function( link ){
       link.addEventListener("click", function ( e ){
         if( S.busy ) return
         S.busy = true
         targets.some(function ( target ){
           if ( target.dataset.target == this.dataset.target ) {
-            S.scrollTo(target)
+            S.scrollTo(target, function(  ){
+              S.busy = false
+            })
             return true
           }
           return false
@@ -39,11 +45,11 @@
   Scroller.prototype = {
     delta: 10,
     fps: 60,
-    scrollTo: function( target ){
+    scrollTo: function( target, done ){
       var S = this
       if ( S.onScroll ) {
         S.onScroll(S.root, target, function(  ){
-          S.busy = false
+          done && done()
         })
       }
       else {
@@ -53,39 +59,44 @@
           fromTop += target.offsetTop
           target = target.offsetParent
         }
+        if ( S.root.scrollTop < fromTop ) {
+          fromTop -= S.root.scrollTop
+        }
+        else if ( fromTop < S.root.scrollTop ) {
+          fromTop += S.root.scrollTop
+        }
         // scroll up
         if ( fromTop < 0 ) {
-          id = setTimeout(function(  ){
+          id = setInterval(function(  ){
             // keep decreasing the target distance
             fromTop += S.delta
             // if default delta would overscroll,
             // just scroll with the difference of the remaining distance
             // and the default delta to reach destination
             if ( 0 < fromTop ) {
-              S.root.scrollTop -= fromTop
-              S.busy = false
-              clearTimeout(id)
+              S.root.scrollTop -= S.delta - fromTop
+              clearInterval(id)
+              done && done()
+
             }
-            S.root.scrollTop -= S.delta
+            else S.root.scrollTop -= S.delta
           }, 1000 / S.fps)
         }
         // scroll down
         else if ( 0 < fromTop ) {
-          id = setTimeout(function (){
+          id = setInterval(function (){
             fromTop -= S.delta
             if ( fromTop < 0 ) {
-              S.root.scrollTop -= fromTop
-              S.busy = false
-              clearTimeout(id)
+              S.root.scrollTop += S.delta + fromTop
+              clearInterval(id)
+              done && done()
             }
-            S.root.scrollTop += S.delta
+            else S.root.scrollTop += S.delta
           }, 1000 / S.fps)
         }
       }
     },
-    onScroll: function( root, target, done ){
-      done()
-    }
+    onScroll: null
   }
   return Scroller
 } )
