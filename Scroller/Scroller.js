@@ -21,8 +21,8 @@
     }
     this.root = root
 
-    this.targets = targets = root.querySelectorAll('[role=~"scroller:target"]')
-    this.links = [].slice.call(root.querySelectorAll('[role=~"scroller:link"]')).forEach(function( link ){
+    this.targets = targets = root.querySelectorAll('[role~="scroller:target"]')
+    this.links = [].slice.call(root.querySelectorAll('[role~="scroller:link"]')).forEach(function( link ){
       link.addEventListener("click", function ( e ){
         if( S.busy ) return
         S.busy = true
