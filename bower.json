@@ -1,0 +1,15 @@
+{
+  "name": "hud",
+  "version": "1.0.0",
+  "main": "src/hud.js",
+  "ignore": [
+    ".jshintrc",
+    ".gitattributes",
+    ".gitignore",
+    ".package.json",
+    "test",
+    "proto",
+    "node_modules",
+    "**/*.txt"
+  ]
+}
