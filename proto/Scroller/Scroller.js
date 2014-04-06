@@ -11,7 +11,7 @@
       , doc
       , targets
 
-    S.busy = false
+    S.isBusy = false
 
     S.delta = options.delta || S.delta
     S.fps = options.fps || S.fps
@@ -28,12 +28,12 @@
     S.targets = targets = [].slice.call(root.querySelectorAll('[role~="scroller:target"]'))
     S.links = [].slice.call(root.querySelectorAll('[role~="scroller:link"]')).forEach(function( link ){
       link.addEventListener("click", function ( e ){
-        if( S.busy ) return
-        S.busy = true
+        if( S.isBusy ) return
+        S.isBusy = true
         targets.some(function ( target ){
           if ( target.dataset.target == this.dataset.target ) {
             S.scrollTo(target, function(  ){
-              S.busy = false
+              S.isBusy = false
             })
             return true
           }

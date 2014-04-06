@@ -1,12 +1,18 @@
-var hud = !function ( f ){
+var hud = (function ( f ){
   return f({})
 }(function ( hud ){
 
   function each( arr, f, context ){
     for ( var i = -1, l = arr.length; ++i < l; ) {
-      if ( f.call(context, arr[i], i, arr) === false ) return false
+      f.call(context, arr[i], i, arr)
     }
-    return true
+  }
+
+  function some( arr, f, context ){
+    for ( var i = -1, l = arr.length; ++i < l; ) {
+      if ( f.call(context, arr[i], i, arr) === true ) return true
+    }
+    return false
   }
 
   function extend( obj, extension ){
@@ -16,15 +22,265 @@ var hud = !function ( f ){
     return obj
   }
 
-  var FILTER_PICK = 1
-    , FILTER_SKIP = 2
-    , FILTER_IGNORE = 3
-    , FILTER_STOP = 4
+  hud.util = {}
+  hud.util.each = each
+  hud.util.some = some
+  hud.util.extend = extend
 
-  hud.FILTER_PICK = FILTER_PICK
-  hud.FILTER_SKIP = FILTER_SKIP
-  hud.FILTER_IGNORE = FILTER_IGNORE
-  hud.FILTER_STOP = FILTER_STOP
+  // constants used by the filter function
+  var FILTER_PICK = hud.FILTER_PICK = 1
+    , FILTER_SKIP = hud.FILTER_SKIP = 2
+    , FILTER_IGNORE = hud.FILTER_STOP = hud.FILTER_IGNORE = 3
+    , FILTER_STOP = 4
+  // the event api, also a hash for custom events
+    , events
+
+  /**
+   * @constructor
+   * @param {Element} element - the element of the role controller
+   * @param {Function} [def] - the definition function of the constructor
+   * @param {Function|Object} setup - an additional function or object passed to each call of the controller
+   *                                  can be an options object, which will be merged with the Role instance
+   * */
+  function Role( element, def, setup ){
+    this.element = element
+    this.events = {}
+    this.channels = {}
+    if ( def ) {
+      def.call(this, element, setup || {})
+    }
+    if ( typeof setup == "function" ) {
+      setup.call(this, element)
+    }
+    else if ( setup ) {
+      extend(this, setup)
+    }
+  }
+
+  hud.Role = Role
+
+  Role.extend = function ( proto ){
+    extend(Role.prototype, proto)
+  }
+
+  Role.prototype = {
+    /**
+     * Collect values from the data attribute space where
+     * attribute names are starting with `name`.
+     * @param {String} name - data attribute name chunk
+     * @param {Object} [defaults] - default values for the options.
+     * */
+    options: function ( name, defaults ){
+      var options = defaults || {}
+        , regexp = new RegExp("^data-" + name + "-(.+?)$")
+
+      each(this.element.attributes, function ( attr ){
+        var name = (attr.name.match(regexp) || [])[1]
+        if ( name ) {
+          name = name.replace(/-(.)/g, function ( match, group ){
+            return group.toUpperCase()
+          })
+          switch ( true ) {
+            case attr.value == "true":
+            case attr.value == "false":
+              options[name] = Boolean(attr.value)
+              break
+            case /^(\d*[\.,])?\d+?$/.test(attr.value):
+              options[name] = Number(attr.value)
+              break
+            default:
+              options[name] = attr.value
+          }
+        }
+      })
+      return options
+    },
+    extend: function ( extension ){
+      return extend(this, extension)
+    },
+    filter: function ( filter, deep ){
+      return hud.filter(this.element, filter, deep)
+    },
+    find: function ( name, deep ){
+      return hud.find(this.element, name, deep)
+    },
+    findSub: function ( name, deep ){
+      return hud.findSub(this.element, name, deep)
+    },
+    findAll: function ( name, deep ){
+      return hud.findAll(this.element, name, deep)
+    },
+    findAllSub: function ( name, deep ){
+      return hud.findAllSub(this.element, name, deep)
+    },
+    role: function ( name, def, setup ){
+      var element = this.find(name, true)
+      if ( !element ) return null
+      return new Role(element, def, setup)
+    },
+    subRole: function ( name, def, setup ){
+      var element = this.findSub(name, true)
+      if ( !element ) return null
+      return new Role(element, def, setup)
+    },
+    allRole: function ( name, def, setup ){
+      var elements = this.findAll(name, true)
+      each(elements, function ( el, i ){
+        elements[i] = new Role(el, def, setup)
+      })
+      return elements
+    },
+    allSubRole: function ( name, def, setup ){
+      var elements = this.findAllSub(name, true)
+      each(elements, function ( el, i ){
+        elements[i] = new Role(el, def, setup)
+      })
+      return elements
+    },
+
+    listen: function ( channel, listener ){
+      if ( this.channels )
+        (this.channels[channel] || (this.channels[channel] = [])).push(listener)
+      return this
+    },
+    unlisten: function ( channel, listener ){
+      if ( this.channels == undefined ) return this
+      channel = this.channels[channel]
+      if ( !channel ) return this
+      var i = this.channels[channel].indexOf(listener)
+      if ( !!~i ) channel.splice(i, 1)
+      return this
+    },
+    broadcast: function ( channel, message ){
+      if ( this.channels == undefined ) return this
+      channel = this.channels[channel]
+      if ( !channel ) return this
+      message = [].slice.call(arguments, 1)
+      each(channel, function ( listener ){
+        listener.apply(this, message)
+      }, this)
+      return this
+    },
+
+    on: function ( event, listener, capture ){
+      function hook(){
+        listener.apply(role, arguments)
+      }
+
+      var role = this
+      if ( events[event] ) {
+        var removeEventListener = events[event](this.element, hook, capture);
+        (this.events[event] || (this.events[event] = [])).push([listener, removeEventListener, hook])
+      }
+      else {
+        // on the hook
+        (this.events[event] || (this.events[event] = [])).push([listener, hook])
+        this.element.addEventListener(event, hook, !!capture)
+      }
+      return this
+    },
+    off: function ( event, listener, capture ){
+      var role = this
+      if ( !this.events[event] || !this.events[event].length ) return this
+
+      some(this.events[event], function ( l ){
+        if ( l[0] == listener ) {
+          if ( events[event] ) {
+            // removeEventListener(hook, capture)
+            l[1](l[2], capture)
+          }
+          else {
+            // off the hook
+            role.element.removeEventListener(event, l[1], !!capture)
+          }
+          return true
+        }
+        return false
+      })
+      return this
+    },
+    once: function ( event, listener, capture ){
+      return this.on(event, function cb(){
+        listener.apply(this, arguments)
+        this.off(event, cb, capture)
+      })
+    }
+  }
+
+  // ====================== API ======================
+
+  hud.create = function ( element, def, setup ){
+    return new Role(element, def, setup)
+  }
+  hud.define = function ( def, proto ){
+    function R( element, setup ){
+      if ( this instanceof R ) {
+        hud.Role.call(this, element, def, setup)
+        return this
+      }
+      else return new hud.Role(element, def, setup)
+    }
+
+    R.prototype = hud.Role.prototype
+    if ( proto ) extend(R.prototype, proto)
+    return R
+  }
+  hud.register = function ( name, def, proto ){
+    hud[name] = hud[name] || hud.define(def, proto)
+  }
+  hud.render = function ( name, root, setup ){
+    if ( !hud[name] ) return null
+    if ( !setup ) {
+      setup = root
+      root = null
+    }
+    var el = hud.find(root, name)
+    if ( !el ) return null
+    return hud[name](el, setup)
+  }
+
+  /**
+   * Register a custom event definition by name.
+   * The definition is a function that, when called,
+   * should handle custom logic, event registration, etc..
+   * and return a function that tears down the controllers.
+   *
+   * Returns a function which calls the unregister returned by the definition,
+   * but only if the arguments match with the original ones.
+   *
+   * @example
+   *
+   * var clickProxy = hud.event("clickproxy", function( element, listener, capture ){
+   *   element.addEventListener("click", listener, capture)
+   *   return function( element, listener, capture ){
+   *     // these arguments are the same as in the closure
+   *     // this function body is executed if the listener and the capture values match
+   *     element.removeEventListener("click", listener, capture)
+   *   }
+   * })
+   * var unregister = clickProxy(someElement, someFunction, true)
+   * unregister(someFunction, true)
+   *
+   * @param {String} name - a name for this event
+   * @param {Function} def - the definition of this event
+   * */
+  hud.event = events = function registerEvent( name, def ){
+    // register a definition function
+    return events[name] = function addEventListener( element, listener, capture ){
+      // normalize capture value for convenience
+      capture = !!capture
+      // when called, execute the custom logic and save the listener remover
+      var doRemoveListener = def.call(element, listener, capture)
+      // and return a function that will call that remover
+      return function removeEventListener( sameListener, sameCapture ){
+        // but only if the same arguments are passed as before
+        if ( sameListener === listener && sameCapture === capture ) {
+          // execute custom tearing logic
+          doRemoveListener(element, listener, capture)
+        }
+      }
+    }
+  }
 
   /**
    * Iterates over every child node, and according to the filter function's
@@ -75,152 +331,17 @@ var hud = !function ( f ){
     }
     return ret
   }
-
-  hud.filterElements = function( root, filter, deep ){
+  hud.filterElements = function ( root, filter, deep ){
     return hud.filter(root, filter, deep, "children")
   }
-
   hud.filterChildNodes = function ( root, filter, deep ){
     return hud.filter(root, filter, deep, "childNode")
   }
-
-  // ====================== ROLES ======================
-
-  function Dataset( element ){
-    this.element = element
-  }
-  Dataset.prototype = {
-    get: function( prop ){
-      if( typeof prop == "string" ){
-        return this.element.getAttribute("data-"+prop)
-      }
-      else {
-        var props = {}
-        for( var name in prop ){
-          props[name] = this.element.getAttribute("data-"+name)
-        }
-        return props
-      }
-    },
-    set: function( prop, val ){
-      if( val != undefined && typeof prop == "string" ){
-        this.element.setAttribute("data-"+prop, val)
-      }
-      else {
-        for( var name in prop ){
-          this.element.setAttribute("data-"+name, prop[name])
-        }
-      }
-    },
-    remove: function( prop ){
-      if( typeof prop == "string" ){
-        this.element.removeAttribute("data-"+prop)
-      }
-      else {
-        for( var name in prop ){
-          this.element.removeAttribute("data-"+name)
-        }
-      }
-    }
-  }
-
-  hud.Role = function( element, def, init ){
-    this.element = element
-    this.events = {}
-    this.channels = {}
-    this.dataset = new Dataset(element)
-    if ( def ) def.call(this, element, init || {})
-    if ( typeof init == "function" ) init.call(this, element)
-  }
-  hud.Role.prototype = {
-    filter: function( filter, deep ){
-      return hud.filter(this.element, filter, deep)
-    },
-    find: function( name, deep ){
-      return hud.find(this.element, name, deep)
-    },
-    findSub: function( name, deep ){
-      return hud.findSub(this.element, name, deep)
-    },
-    findAll: function( name, deep ){
-      return hud.findAll(this.element, name, deep)
-    },
-    findAllSub: function( name, deep ){
-      return hud.findAllSub(this.element, name, deep)
-    },
-
-    listen: function ( channel, listener ){
-      if ( this.channels )
-        (this.channels[channel] || (this.channels[channel] = [])).push(listener)
-      return this
-    },
-    unlisten: function ( channel, listener ){
-      if ( this.channels == undefined ) return this
-      channel = this.channels[channel]
-      if ( !channel ) return this
-      var i = this.channels[channel].indexOf(listener)
-      if ( !!~i ) channel.splice(i, 1)
-      return this
-    },
-    broadcast: function ( channel, message ){
-      if ( this.channels == undefined ) return this
-      channel = this.channels[channel]
-      if ( !channel ) return this
-      message = [].slice.call(arguments, 1)
-      each(channel, function ( listener ){
-        listener.apply(this, message)
-      }, this)
-      return this
-    },
-
-    on: function ( event, listener, capture ){
-      function hook(){
-        listener.apply(role, arguments)
-      }
-      // on the hook
-      (this.events[event] || (this.events[event] = [])).push([listener, hook])
-      var role = this
-      this.element.addEventListener(event, hook, !!capture)
-      return this
-    },
-    off: function ( event, listener, capture ){
-      var role = this
-      if( !this.events[event] || !this.events[event].length ) return this
-      each(this.events[event], function ( l ){
-        if ( l[0] == listener ) {
-          // off the hook
-          role.element.removeEventListener(event, l[1], !!capture)
-          return false
-        }
-        return true
-      })
-      return this
-    },
-    once: function( event, listener, capture ){
-      this.on(event, function cb(  ){
-        listener.apply(this, arguments)
-        this.off(event, cb, capture)
-      })
-    }
-  }
-
-  hud.define = function( def, proto ){
-    function R( element, init ){
-      if ( this instanceof R ) {
-        hud.Role.call(this, element, def, init)
-        return this
-      }
-      else return new hud.Role(element, def, init)
-    }
-    R.prototype = hud.Role.prototype
-    if ( proto ) extend(R.prototype, proto)
-    return R
-  }
-  hud.find = function( root, name, deep ){
+  hud.find = function ( root, name, deep ){
     var element = null
     root = root || document.body
-    hud.filter(root, function ( el ){
-      if ( el.getAttribute && el.getAttribute("role") == name ) {
+    hud.filterElements(root, function ( el ){
+      if ( el.getAttribute("role") == name ) {
         element = el
         return FILTER_STOP
       }
@@ -228,12 +349,12 @@ var hud = !function ( f ){
     }, deep)
     return element
   }
-  hud.findSub = function( root, name, deep ){
+  hud.findSub = function ( root, name, deep ){
     var element = null
     root = root || document.body
-    name = new RegExp("^"+name+"(:\\w+)*$")
-    hud.filter(root, function ( el ){
-      if ( el.getAttribute && name.test(el.getAttribute("role")) ) {
+    name = new RegExp("^" + name + "(:\\w+)*$")
+    hud.filterElements(root, function ( el ){
+      if ( name.test(el.getAttribute("role")) ) {
         element = el
         return FILTER_STOP
       }
@@ -241,28 +362,23 @@ var hud = !function ( f ){
     }, deep)
     return element
   }
-  hud.findAll = function( root, name, deep ){
+  hud.findAll = function ( root, name, deep ){
     root = root || document.body
-    return hud.filter(root, function ( el ){
-      if ( el.getAttribute && el.getAttribute("role") == name ) {
-        return FILTER_PICK
-      }
-      return FILTER_SKIP
+    return hud.filterElements(root, function ( el ){
+      return el.getAttribute("role") == name
+        ? FILTER_PICK
+        : FILTER_SKIP
     }, deep)
   }
-  hud.findAllSub = function( root, name, deep ){
+  hud.findAllSub = function ( root, name, deep ){
     root = root || document.body
-    name = new RegExp("^"+name+"(:\\w+)*$")
-    return hud.filter(root, function ( el ){
-      if ( el.getAttribute && name.test(el.getAttribute("role")) ) {
-        return FILTER_PICK
-      }
-      return FILTER_SKIP
+    name = new RegExp("^" + name + "(:\\w+)*$")
+    return hud.filterElements(root, function ( el ){
+      return name.test(el.getAttribute("role"))
+        ? FILTER_PICK
+        : FILTER_SKIP
     }, deep)
   }
 
-  hud.dataset = function( element ){
-    return new Dataset(element)
-  }
-
-})
+  return hud
+}))

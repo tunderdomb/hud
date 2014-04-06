@@ -1,5 +1,4 @@
-
-hud.defineEvent("type", function( el, callback ){
+hud.event("type", function( el, callback, capture ){
   var pressed = 0
     , released = 1
   function press( e ){
@@ -13,10 +12,10 @@ hud.defineEvent("type", function( el, callback ){
     }
     pressed = 0
   }
-  el.addEventListener("keypress", press)
-  el.addEventListener("keyup", up)
+  el.addEventListener("keypress", press, capture)
+  el.addEventListener("keyup", up, capture)
   return function removeListeners(){
-    el.removeEventListener("keypress", press)
-    el.removeEventListener("keyup", up)
+    el.removeEventListener("keypress", press, capture)
+    el.removeEventListener("keyup", up, capture)
   }
 })
