@@ -137,6 +137,12 @@ var hud = (function ( f ){
       })
       return elements
     },
+    render: function ( name, setup ){
+      return hud.render(name, this.element, setup)
+    },
+    renderAll: function ( name, setup ){
+      return hud.renderAll(name, setup)
+    },
 
     listen: function ( channel, listener ){
       if ( this.channels )
@@ -237,6 +243,19 @@ var hud = (function ( f ){
     var el = hud.find(root, name)
     if ( !el ) return null
     return hud[name](el, setup)
+  }
+  hud.renderAll = function ( name, root, setup ){
+    if ( !hud[name] ) return null
+    if ( !setup ) {
+      setup = root
+      root = null
+    }
+    var elements = hud.findAll(root, name)
+    var i = -1, l = elements.length
+    while ( ++i < l ) {
+      elements[i] = hud[name](elements[i], setup)
+    }
+    return elements
   }
 
   /**
