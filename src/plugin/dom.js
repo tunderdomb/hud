@@ -143,7 +143,7 @@ hud.Role.extend({
           return getStyle(this.element, prop)
         }
         else for ( var name in prop ) {
-          this.element.style[name] = getStyle(this.element, name)
+          this.element.style[name] = prop[name]
         }
       }
       else {
