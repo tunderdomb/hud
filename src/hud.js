@@ -72,7 +72,9 @@ var hud = (function ( f ){
      * */
     options: function ( name, defaults ){
       var options = defaults || {}
-        , regexp = new RegExp("^data-" + name + "-(.+?)$")
+        , regexp = defaults
+          ? new RegExp("^data-" + name + "-(.+?)$")
+          : new RegExp("^data-(.+?)$")
 
       each(this.element.attributes, function ( attr ){
         var name = (attr.name.match(regexp) || [])[1]
