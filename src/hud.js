@@ -215,7 +215,7 @@ var hud = (function ( f ){
     return new Role(element, def, setup)
   }
   hud.define = function ( def, proto, base ){
-    base = base || Role
+    base = hud[base] ? hud[base] : base || Role
     function R( element, setup ){
       if ( this instanceof R ) {
         base.call(this, element, def, setup)
@@ -230,10 +230,13 @@ var hud = (function ( f ){
     R.extend = function( def, proto ){
       return hud.define(def, proto, R)
     }
+    R.register = function( name, def, proto ){
+      return hud.register(name, def, proto, R)
+    }
     return R
   }
-  hud.register = function ( name, def, proto ){
-    hud[name] = hud[name] || hud.define(def, proto)
+  hud.register = function ( name, def, proto, base ){
+    hud[name] = hud[name] || hud.define(def, proto, base)
   }
   hud.render = function ( name, root, setup ){
     if ( !hud[name] ) return null
