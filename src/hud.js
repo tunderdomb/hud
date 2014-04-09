@@ -49,12 +49,6 @@ var hud = (function ( f ){
     if ( def ) {
       def.call(this, element, setup || {})
     }
-    if ( typeof setup == "function" ) {
-      setup.call(this, element)
-    }
-    else if ( setup ) {
-      extend(this, setup)
-    }
   }
 
   hud.Role = Role
