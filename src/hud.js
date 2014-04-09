@@ -214,17 +214,22 @@ var hud = (function ( f ){
   hud.create = function ( element, def, setup ){
     return new Role(element, def, setup)
   }
-  hud.define = function ( def, proto ){
+  hud.define = function ( def, proto, base ){
+    base = base || Role
     function R( element, setup ){
       if ( this instanceof R ) {
-        hud.Role.call(this, element, def, setup)
+        base.call(this, element, def, setup)
         return this
       }
-      else return new hud.Role(element, def, setup)
+      else return new R(element, def, setup)
     }
 
-    R.prototype = hud.Role.prototype
+    R.prototype = {}
+    extend(R.prototype, base.prototype)
     if ( proto ) extend(R.prototype, proto)
+    R.extend = function( def, proto ){
+      return hud.define(def, proto, R)
+    }
     return R
   }
   hud.register = function ( name, def, proto ){
