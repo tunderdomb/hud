@@ -219,7 +219,6 @@ var hud = (function ( f ){
     function R( element, setup ){
       if ( this instanceof R ) {
         base.call(this, element, def, setup)
-        return this
       }
       else return new R(element, def, setup)
     }
