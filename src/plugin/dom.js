@@ -4,7 +4,7 @@ hud.Role.extend({
     return this
   },
   appendTo: function ( element ){
-    element.parentNode.appendChild(this.element)
+    element.appendChild(this.element)
     return this
   },
   prependChild: function ( element ){
