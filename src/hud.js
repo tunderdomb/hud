@@ -42,13 +42,10 @@ var hud = (function ( f ){
    * @param {Function|Object} setup - an additional function or object passed to each call of the controller
    *                                  can be an options object, which will be merged with the Role instance
    * */
-  function Role( element, def, setup ){
+  function Role( element ){
     this.element = element
     this.events = {}
     this.channels = {}
-    if ( def ) {
-      def.call(this, element, setup || {})
-    }
   }
 
   hud.Role = Role
@@ -112,24 +109,24 @@ var hud = (function ( f ){
     role: function ( name, def, setup ){
       var element = this.find(name, true)
       if ( !element ) return null
-      return new Role(element, def, setup)
+      return hud.create(element, def, setup)
     },
     subRole: function ( name, def, setup ){
       var element = this.findSub(name, true)
       if ( !element ) return null
-      return new Role(element, def, setup)
+      return hud.create(element, def, setup)
     },
     allRole: function ( name, def, setup ){
       var elements = this.findAll(name, true)
       each(elements, function ( el, i ){
-        elements[i] = new Role(el, def, setup)
+        elements[i] = hud.create(el, def, setup)
       })
       return elements
     },
     allSubRole: function ( name, def, setup ){
       var elements = this.findAllSub(name, true)
       each(elements, function ( el, i ){
-        elements[i] = new Role(el, def, setup)
+        elements[i] = hud.create(el, def, setup)
       })
       return elements
     },
@@ -212,27 +209,30 @@ var hud = (function ( f ){
   // ====================== API ======================
 
   hud.create = function ( element, def, setup ){
-    return new Role(element, def, setup)
+    var role = new Role(element)
+    if( def ) def.call(role, setup)
+    return role
   }
   hud.define = function ( def, proto, base ){
     base = hud[base] ? hud[base] : base || Role
     function R( element, setup ){
-      if ( this instanceof R ) {
-        base.call(this, element, def, setup)
+      base.call(this, element, setup)
+      if ( def ) {
+        def.call(this, element, setup || {})
       }
-      else return new R(element, def, setup)
     }
-
-    R.prototype = {}
     extend(R.prototype, base.prototype)
     if ( proto ) extend(R.prototype, proto)
-    R.extend = function( def, proto ){
+    function create( element, setup ){
+      return new R(element, setup)
+    }
+    create.extend = function( def, proto ){
       return hud.define(def, proto, R)
     }
-    R.register = function( name, def, proto ){
+    create.register = function( name, def, proto ){
       return hud.register(name, def, proto, R)
     }
-    return R
+    return create
   }
   hud.register = function ( name, def, proto, base ){
     hud[name] = hud[name] || hud.define(def, proto, base)
