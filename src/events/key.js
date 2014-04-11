@@ -1,4 +1,4 @@
-hud.event("keyCode", function( element, listener, capture, code ){
+hud.event("key", function( element, listener, capture, code ){
   function keyup( e ){
     if ( code == e.keyCode
       || code && code.indexOf && ~code.indexOf(e.keyCode) )
