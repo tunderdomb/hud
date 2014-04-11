@@ -165,11 +165,11 @@ var hud = (function ( f ){
       function hook(){
         listener.apply(role, arguments)
       }
-
+      var args = [this.element, hook].concat([].slice.call(arguments, 2))
       var role = this
       if ( events[event] ) {
-        var removeEventListener = events[event](this.element, hook, capture);
-        (this.events[event] || (this.events[event] = [])).push([listener, removeEventListener, hook])
+        var removeEventListener = events[event].apply(null, args)
+          ;(this.events[event] || (this.events[event] = [])).push([listener, removeEventListener, hook])
       }
       else {
         // on the hook
@@ -186,7 +186,7 @@ var hud = (function ( f ){
         if ( l[0] == listener ) {
           if ( events[event] ) {
             // removeEventListener(hook, capture)
-            l[1](l[2], capture)
+            l[1](l[2], !!capture)
           }
           else {
             // off the hook
@@ -199,10 +199,12 @@ var hud = (function ( f ){
       return this
     },
     once: function ( event, listener, capture ){
-      return this.on(event, function cb(){
+      function once(){
         listener.apply(this, arguments)
-        this.off(event, cb, capture)
-      })
+        this.off(event, once, capture)
+      }
+      var args = [event, once].concat([].slice.call(arguments, 2))
+      return this.on.apply(this, args)
     }
   }
 
@@ -292,7 +294,7 @@ var hud = (function ( f ){
       // normalize capture value for convenience
       capture = !!capture
       // when called, execute the custom logic and save the listener remover
-      var doRemoveListener = def.call(element, listener, capture)
+      var doRemoveListener = def.apply(element, arguments)
       // and return a function that will call that remover
       return function removeEventListener( sameListener, sameCapture ){
         // but only if the same arguments are passed as before
@@ -302,6 +304,17 @@ var hud = (function ( f ){
         }
       }
     }
+  }
+
+  hud.event.once = function( element, event, listener, capture ){
+    debugger
+    function once(  ){
+      listener.apply(this, arguments)
+      removeListener(once, capture)
+    }
+    var args = [element, once].concat([].slice.call(arguments, 3))
+      , removeListener
+    return removeListener = events[event].apply(null, args)
   }
 
   /**
