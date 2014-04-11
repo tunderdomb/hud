@@ -306,8 +306,10 @@ var hud = (function ( f ){
     }
   }
 
+  /**
+   * Call custom event listener just once
+   * */
   hud.event.once = function( element, event, listener, capture ){
-    debugger
     function once(  ){
       listener.apply(this, arguments)
       removeListener(once, capture)
