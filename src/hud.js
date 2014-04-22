@@ -436,6 +436,7 @@ var hud = (function ( f ){
       root = document.body
       deep = !!name
     }
+    else root = root || document.body
     hud.filterElements(root, function ( el ){
       if ( hasRole(el, name) ) {
         element = el
@@ -467,6 +468,7 @@ var hud = (function ( f ){
       root = document.body
       deep = !!name
     }
+    else root = root || document.body
     return hud.filterElements(root, function ( el ){
       return el.getAttribute("role") == name
         ? FILTER_PICK
@@ -479,6 +481,7 @@ var hud = (function ( f ){
       root = document.body
       deep = !!name
     }
+    else root = root || document.body
     return hud.filterElements(root, function ( el ){
       return hasRole(el, name)
         ? FILTER_PICK
