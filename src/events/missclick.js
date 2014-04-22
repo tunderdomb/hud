@@ -3,7 +3,7 @@ hud.event("missclick", function( element, listener, capture ){
     if ( element.contains(e.target) || e.target == element ) {
       return
     }
-    listener()
+    listener(e)
   }
   window.addEventListener("click", missClick, true)
   return function( element, listener, capture ){

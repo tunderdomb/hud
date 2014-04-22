@@ -87,6 +87,12 @@ hud.Role.extend({
       nextSibling.parentNode.appendChild(anotherElement)
     }
   },
+  contains: function( element ){
+    return this.element.contains(element)
+  },
+  isSame: function( element ){
+    return this.element == element
+  },
   setAttribute: function ( name, value ){
     this.element.setAttribute(name, value)
     return this
@@ -95,9 +101,11 @@ hud.Role.extend({
     this.element.removeAttribute(name)
     return this
   },
+  hasAttribute: function( name ){
+    return this.element.hasAttribute(name)
+  },
   getAttribute: function ( name ){
-    this.element.getAttribute(name)
-    return this
+    return this.element.getAttribute(name)
   },
   textContent: function ( string ){
     if ( string === undefined ) {

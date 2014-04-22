@@ -22,6 +22,25 @@ var hud = (function ( f ){
     return obj
   }
 
+  function hasRole( element, role, strict ){
+    var roles = element.getAttribute("role")
+    if ( !roles ) return false
+    roles = roles.split(/\s+/)
+    var i = -1, l = roles.length
+    if ( strict ) while ( ++i < l ) {
+      if ( roles[i] == role ) return true
+    }
+    else {
+      if ( typeof role == "string" ) {
+        role = new RegExp("^" + role + "($|(\\:\\w+)+)")
+      }
+      while ( ++i < l ) {
+        if( role.test(roles[i]) ) return true
+      }
+    }
+    return false
+  }
+
   hud.util = {}
   hud.util.each = each
   hud.util.some = some
@@ -62,10 +81,16 @@ var hud = (function ( f ){
      * @param {Object} [defaults] - default values for the options.
      * */
     options: function ( name, defaults ){
-      var options = defaults || {}
-        , regexp = defaults
-          ? new RegExp("^data-" + name + "-(.+?)$")
-          : new RegExp("^data-(.+?)$")
+      var options
+        , regexp
+      if ( typeof name == "string" ) {
+        options = defaults || {}
+        regexp = new RegExp("^data-" + name + "-(.+?)$")
+      }
+      else {
+        options = defaults || name || {}
+        regexp = new RegExp("^data-(.+?)$")
+      }
 
       each(this.element.attributes, function ( attr ){
         var name = (attr.name.match(regexp) || [])[1]
@@ -130,6 +155,25 @@ var hud = (function ( f ){
       })
       return elements
     },
+    extendWidthSubRoles: function ( name, def, setup ){
+      var role = this
+      name = new RegExp("(?:\\s+|^)" + name + "\\:(\\w+)(?:\\:|$)")
+      this.allSubRole(name, def, setup).forEach(function ( subRole ){
+        var subRoleName = subRole.getAttribute("role").replace(name, "$1")
+        if ( role[subRoleName] ) {
+          if ( role[subRoleName].length ) {
+            role[subRoleName].push(subRole)
+          }
+          else {
+            role[subRoleName] = [role[subRoleName], subRole]
+          }
+        }
+        else {
+          role[subRoleName] = subRole
+        }
+      })
+      return this
+    },
     render: function ( name, setup ){
       return hud.render(name, this.element, setup)
     },
@@ -165,11 +209,13 @@ var hud = (function ( f ){
       function hook(){
         listener.apply(role, arguments)
       }
+
       var args = [this.element, hook].concat([].slice.call(arguments, 2))
       var role = this
       if ( events[event] ) {
         var removeEventListener = events[event].apply(null, args)
-          ;(this.events[event] || (this.events[event] = [])).push([listener, removeEventListener, hook])
+          ;
+        (this.events[event] || (this.events[event] = [])).push([listener, removeEventListener, hook])
       }
       else {
         // on the hook
@@ -203,6 +249,7 @@ var hud = (function ( f ){
         listener.apply(this, arguments)
         this.off(event, once, capture)
       }
+
       var args = [event, once].concat([].slice.call(arguments, 2))
       return this.on.apply(this, args)
     }
@@ -212,7 +259,7 @@ var hud = (function ( f ){
 
   hud.create = function ( element, def, setup ){
     var role = new Role(element)
-    if( def ) def.call(role, setup)
+    if ( def ) def.call(role, setup)
     return role
   }
   hud.define = function ( def, proto, base ){
@@ -223,16 +270,22 @@ var hud = (function ( f ){
         def.call(this, element, setup || {})
       }
     }
+
     extend(R.prototype, base.prototype)
     if ( proto ) extend(R.prototype, proto)
     function create( element, setup ){
       return new R(element, setup)
     }
-    create.extend = function( def, proto ){
+
+    create.prototype = R.prototype
+    create.extend = function ( def, proto ){
       return hud.define(def, proto, R)
     }
-    create.register = function( name, def, proto ){
+    create.register = function ( name, def, proto ){
       return hud.register(name, def, proto, R)
+    }
+    create.mixin = function ( extensions ){
+      return extend(R.prototype, extensions)
     }
     return create
   }
@@ -309,11 +362,12 @@ var hud = (function ( f ){
   /**
    * Call custom event listener just once
    * */
-  hud.event.once = function( element, event, listener, capture ){
-    function once(  ){
+  hud.event.once = function ( element, event, listener, capture ){
+    function once(){
       listener.apply(this, arguments)
       removeListener(once, capture)
     }
+
     var args = [element, once].concat([].slice.call(arguments, 3))
       , removeListener
     return removeListener = events[event].apply(null, args)
@@ -374,11 +428,16 @@ var hud = (function ( f ){
   hud.filterChildNodes = function ( root, filter, deep ){
     return hud.filter(root, filter, deep, "childNode")
   }
+  hud.hasRole = hasRole
   hud.find = function ( root, name, deep ){
     var element = null
-    root = root || document.body
+    if ( typeof root == "string" ) {
+      name = root
+      root = document.body
+      deep = !!name
+    }
     hud.filterElements(root, function ( el ){
-      if ( el.getAttribute("role") == name ) {
+      if ( hasRole(el, name) ) {
         element = el
         return FILTER_STOP
       }
@@ -388,10 +447,13 @@ var hud = (function ( f ){
   }
   hud.findSub = function ( root, name, deep ){
     var element = null
-    root = root || document.body
-    name = new RegExp("^" + name + "(:\\w+)*$")
+    if ( typeof root == "string" ) {
+      name = root
+      root = document.body
+      deep = !!name
+    }
     hud.filterElements(root, function ( el ){
-      if ( name.test(el.getAttribute("role")) ) {
+      if ( hasRole(el, name) ) {
         element = el
         return FILTER_STOP
       }
@@ -400,7 +462,11 @@ var hud = (function ( f ){
     return element
   }
   hud.findAll = function ( root, name, deep ){
-    root = root || document.body
+    if ( typeof root == "string" ) {
+      name = root
+      root = document.body
+      deep = !!name
+    }
     return hud.filterElements(root, function ( el ){
       return el.getAttribute("role") == name
         ? FILTER_PICK
@@ -408,10 +474,13 @@ var hud = (function ( f ){
     }, deep)
   }
   hud.findAllSub = function ( root, name, deep ){
-    root = root || document.body
-    name = new RegExp("^" + name + "(:\\w+)*$")
+    if ( typeof root == "string" ) {
+      name = root
+      root = document.body
+      deep = !!name
+    }
     return hud.filterElements(root, function ( el ){
-      return name.test(el.getAttribute("role"))
+      return hasRole(el, name)
         ? FILTER_PICK
         : FILTER_SKIP
     }, deep)

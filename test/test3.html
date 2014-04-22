@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title></title>
+</head>
+<body>
+
+<div role=" hey asd">
+  <div role="hey:ho"></div>
+  <div role="hey:lets"></div>
+  <div role="hey:go"></div>
+  <div role="hey:go"></div>
+  <div role="hey:go"></div>
+  <div role=" heyho letsgo"></div>
+</div>
+
+<script type="text/javascript" src="../src/hud.js"></script>
+<script type="text/javascript" src="../src/plugin/dom.js"></script>
+<script type="text/javascript">
+  var hey = hud.create(hud.find("hey"), function(  ){
+    this.extendWidthSubRoles("hey")
+  }, {
+
+  })
+</script>
+</body>
+</html>
