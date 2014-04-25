@@ -35,10 +35,29 @@ var hud = (function ( f ){
         role = new RegExp("^" + role + "($|(\\:\\w+)+)")
       }
       while ( ++i < l ) {
-        if( role.test(roles[i]) ) return true
+        if ( role.test(roles[i]) ) return true
       }
     }
     return false
+  }
+
+  function extendRole( role, subRole, subRoleName ){
+    if ( role[subRoleName] ) {
+      if ( role[subRoleName].length ) {
+        role[subRoleName].push(subRole)
+      }
+      else {
+        role[subRoleName] = [role[subRoleName], subRole]
+      }
+    }
+    else {
+      role[subRoleName] = subRole
+    }
+  }
+
+  function getSubName( roleName, element ){
+    roleName = new RegExp("(?:\\s+|^)" + roleName + "\\:(\\w+)(?:\\:|$)")
+    return element.getAttribute("role").replace(roleName, "$1")
   }
 
   hud.util = {}
@@ -131,6 +150,22 @@ var hud = (function ( f ){
     findAllSub: function ( name, deep ){
       return hud.findAllSub(this.element, name, deep)
     },
+    extendWidthAll: function( name, deep ){
+      var role = this
+      this.findAll(name, deep).forEach(function ( subRole ){
+        extendRole(role, subRole, subRole.getAttribute("role"))
+      })
+      return this
+    },
+    extendWidthSubs: function( name, deep ){
+      var role = this
+      name = new RegExp("(?:\\s+|^)" + name + "\\:(\\w+)(?:\\:|$)")
+      this.findAllSub(name, deep).forEach(function ( subRole ){
+        var subRoleName = subRole.getAttribute("role").replace(name, "$1")
+        extendRole(role, subRole, subRoleName)
+      })
+      return this
+    },
     role: function ( name, def, setup ){
       var element = this.find(name, true)
       if ( !element ) return null
@@ -155,22 +190,19 @@ var hud = (function ( f ){
       })
       return elements
     },
+    extendWithRoles: function ( name, def, setup ){
+      var role = this
+      this.allRole(name, def, setup).forEach(function ( subRole ){
+        extendRole(role, subRole, subRole.getAttribute("role"))
+      })
+      return this
+    },
     extendWidthSubRoles: function ( name, def, setup ){
       var role = this
       name = new RegExp("(?:\\s+|^)" + name + "\\:(\\w+)(?:\\:|$)")
       this.allSubRole(name, def, setup).forEach(function ( subRole ){
         var subRoleName = subRole.getAttribute("role").replace(name, "$1")
-        if ( role[subRoleName] ) {
-          if ( role[subRoleName].length ) {
-            role[subRoleName].push(subRole)
-          }
-          else {
-            role[subRoleName] = [role[subRoleName], subRole]
-          }
-        }
-        else {
-          role[subRoleName] = subRole
-        }
+        extendRole(role, subRole, subRoleName)
       })
       return this
     },
@@ -258,6 +290,9 @@ var hud = (function ( f ){
   // ====================== API ======================
 
   hud.create = function ( element, def, setup ){
+    if ( typeof def == "string" && hud[def] ) {
+      return hud[def](element, setup)
+    }
     var role = new Role(element)
     if ( def ) def.call(role, setup)
     return role
@@ -429,6 +464,7 @@ var hud = (function ( f ){
     return hud.filter(root, filter, deep, "childNode")
   }
   hud.hasRole = hasRole
+  hud.getSubName = getSubName
   hud.find = function ( root, name, deep ){
     var element = null
     if ( typeof root == "string" ) {
