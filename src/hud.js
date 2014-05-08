@@ -222,7 +222,7 @@ var hud = (function ( f ){
       if ( this.channels == undefined ) return this
       channel = this.channels[channel]
       if ( !channel ) return this
-      var i = this.channels[channel].indexOf(listener)
+      var i = channel.indexOf(listener)
       if ( !!~i ) channel.splice(i, 1)
       return this
     },
