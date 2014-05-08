@@ -96,7 +96,7 @@ var hud = (function ( f ){
    *                                  can be an options object, which will be merged with the Role instance
    * */
   function Role( element ){
-    this.element = element
+    if( element instanceof Element) this.element = element
     this.events = {}
     this.channels = {}
   }
