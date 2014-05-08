@@ -35,7 +35,7 @@ var hud = (function ( f ){
       }
       else {
         while ( ++i < l ) {
-          if ( role.test(roles[i])) return true
+          if ( role.test(roles[i]) ) return true
         }
       }
     }
@@ -52,7 +52,7 @@ var hud = (function ( f ){
 
   function keyRole( el ){
     var role = el.getAttribute("role")
-    if( !role ) return ""
+    if ( !role ) return ""
     return role.replace(/^(?:.+:)?(\w+)$/, "$1")
   }
 
@@ -159,20 +159,20 @@ var hud = (function ( f ){
     findAll: function ( name, strictMatch ){
       return hud.findAll(name, this.element, strictMatch)
     },
-    extendWithAll: function( name, strictMatch ){
+    extendWithAll: function ( name, strictMatch ){
       var role = this
       this.findAll(name, strictMatch).forEach(function ( subRole ){
         extendRole(role, subRole, subRole.getAttribute("role"))
       })
       return this
     },
-    extendWithSubs: function( name, strictMatch ){
+    extendWithSubs: function ( name, strictMatch ){
       var role = this
-        , match = new RegExp("(?:^|\\s)"+name+":(\\w+?)(?::|\\s|$)")
+        , match = new RegExp("(?:^|\\s)" + name + ":(\\w+?)(?::|\\s|$)")
       this.findAll(name, strictMatch).forEach(function ( subRole ){
-        var subRoleName = subRole.getAttribute("role").match(match)||[]
+        var subRoleName = subRole.getAttribute("role").match(match) || []
         subRoleName = subRoleName[1]
-        if( subRoleName ) extendRole(role, subRole, subRoleName)
+        if ( subRoleName ) extendRole(role, subRole, subRoleName)
       })
       return this
     },
@@ -191,18 +191,18 @@ var hud = (function ( f ){
     extendWithRoles: function ( name, def, setup, strictMatch ){
       var role = this
       this.allRole(name, def, setup, strictMatch).forEach(function ( subRole ){
-        var subRoleName =subRole.element.getAttribute("role")
+        var subRoleName = subRole.element.getAttribute("role")
         extendRole(role, subRole, subRoleName)
       })
       return this
     },
     extendWithSubRoles: function ( name, def, setup, strictMatch ){
       var role = this
-        , match = new RegExp("(?:^|\\s)"+name+":(\\w+?)(?::|\\s|$)")
+        , match = new RegExp("(?:^|\\s)" + name + ":(\\w+?)(?::|\\s|$)")
       this.allRole(name, def, setup, strictMatch).forEach(function ( subRole ){
-        var subRoleName = subRole.element.getAttribute("role").match(match)||[]
+        var subRoleName = subRole.element.getAttribute("role").match(match) || []
         subRoleName = subRoleName[1]
-        if( subRoleName ) extendRole(role, subRole, subRoleName)
+        if ( subRoleName ) extendRole(role, subRole, subRoleName)
       })
       return this
     },
@@ -245,8 +245,7 @@ var hud = (function ( f ){
       var args = [this.element, hook].concat([].slice.call(arguments, 2))
       var role = this
       if ( events[event] ) {
-        var removeEventListener = events[event].apply(null, args)
-          ;
+        var removeEventListener = events[event].apply(this, args);
         (this.events[event] || (this.events[event] = [])).push([listener, removeEventListener, hook])
       }
       else {
@@ -305,6 +304,7 @@ var hud = (function ( f ){
         def.call(this, element, setup || {})
       }
     }
+
     function create( element, setup ){
       return new R(element, setup)
     }

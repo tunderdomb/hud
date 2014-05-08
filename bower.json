@@ -1,6 +1,6 @@
 {
   "name": "hud",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "main": "src/hud.js",
   "ignore": [
     ".idea/",
@@ -8,6 +8,9 @@
     ".gitattributes",
     ".gitignore",
     ".package.json",
+    "Gruntfile.js",
+    "package.json",
+    "bower.json",
     "test",
     "proto",
     "node_modules",
