@@ -22,27 +22,17 @@ var hud = (function ( f ){
     return obj
   }
 
-  function hasRole( element, role, strictMatch ){
+  function hasRole( element, role ){
     var roles = element.getAttribute("role")
     if ( !roles ) return false
     roles = roles.split(/\s+/)
     var i = -1, l = roles.length
-    if ( strictMatch ) {
-      if ( typeof role == "string" ) {
-        while ( ++i < l ) {
-          if ( roles[i] == role ) return true
-        }
-      }
-      else {
-        while ( ++i < l ) {
-          if ( role.test(roles[i]) ) return true
-        }
+    if ( typeof role == "string" ) {
+      while ( ++i < l ) {
+        if ( roles[i] == role ) return true
       }
     }
     else {
-      if ( typeof role == "string" ) {
-        role = new RegExp("^" + role + "($|(\\:\\w+)+)")
-      }
       while ( ++i < l ) {
         if ( role.test(roles[i]) ) return true
       }
@@ -153,55 +143,60 @@ var hud = (function ( f ){
     filter: function ( filter, deep ){
       return hud.filter(this.element, filter, deep)
     },
-    find: function ( name, strictMatch ){
-      return hud.find(name, this.element, strictMatch)
+    find: function ( name ){
+      return hud.find(name, this.element)
     },
-    findAll: function ( name, strictMatch ){
-      return hud.findAll(name, this.element, strictMatch)
+    findAll: function ( name ){
+      return hud.findAll(name, this.element)
     },
-    extendWithAll: function ( name, strictMatch ){
+    findSubs: function( name ){
+      return hud.findSubs(name, this.element)
+    },
+    extendWithAll: function ( name ){
       var role = this
-      this.findAll(name, strictMatch).forEach(function ( subRole ){
+      this.findAll(name).forEach(function ( subRole ){
         extendRole(role, subRole, subRole.getAttribute("role"))
       })
       return this
     },
-    extendWithSubs: function ( name, strictMatch ){
+    extendWithSubs: function ( name ){
       var role = this
-        , match = new RegExp("(?:^|\\s)" + name + ":(\\w+?)(?::|\\s|$)")
-      this.findAll(name, strictMatch).forEach(function ( subRole ){
-        var subRoleName = subRole.getAttribute("role").match(match) || []
-        subRoleName = subRoleName[1]
+      this.findSubs(name).forEach(function ( subRole ){
+        var subRoleName = getSubName(name, subRole)
         if ( subRoleName ) extendRole(role, subRole, subRoleName)
       })
       return this
     },
-    role: function ( name, def, setup, strictMatch ){
-      var element = this.find(name, strictMatch)
+    role: function ( name, def, setup ){
+      var element = this.find(name)
       if ( !element ) return null
       return hud.create(element, def, setup)
     },
-    allRole: function ( name, def, setup, strictMatch ){
-      var elements = this.findAll(name, strictMatch)
+    allRole: function ( name, def, setup ){
+      var elements = this.findAll(name)
       each(elements, function ( el, i ){
         elements[i] = hud.create(el, def, setup)
       })
       return elements
     },
-    extendWithRoles: function ( name, def, setup, strictMatch ){
+    subRoles: function( name, def, setup ){
+      return this.findSubs(name).map(function( el ){
+        var subRoleName = getSubName(name, el)
+        if( subRoleName ) subRoleName = name+":"+subRoleName
+        return hud.create(el, subRoleName||def, setup)
+      })
+    },
+    extendWithRoles: function ( name, def, setup ){
       var role = this
-      this.allRole(name, def, setup, strictMatch).forEach(function ( subRole ){
-        var subRoleName = subRole.element.getAttribute("role")
-        extendRole(role, subRole, subRoleName)
+      this.allRole(name, def, setup).forEach(function ( subRole ){
+        extendRole(role, subRole, name)
       })
       return this
     },
-    extendWithSubRoles: function ( name, def, setup, strictMatch ){
+    extendWithSubRoles: function ( name, def, setup ){
       var role = this
-        , match = new RegExp("(?:^|\\s)" + name + ":(\\w+?)(?::|\\s|$)")
-      this.allRole(name, def, setup, strictMatch).forEach(function ( subRole ){
-        var subRoleName = subRole.element.getAttribute("role").match(match) || []
-        subRoleName = subRoleName[1]
+      this.subRoles(name, def, setup).forEach(function ( subRole ){
+        var subRoleName = getSubName(name, subRole.element)
         if ( subRoleName ) extendRole(role, subRole, subRoleName)
       })
       return this
@@ -289,11 +284,14 @@ var hud = (function ( f ){
   // ====================== API ======================
 
   hud.create = function ( element, def, setup ){
-    if ( typeof def == "string" && hud[def] ) {
+    if ( typeof element == "string" ) {
+      element = hud.find(element)
+    }
+    if ( hud[def] != undefined ) {
       return hud[def](element, setup)
     }
     var role = new Role(element)
-    if ( def ) def.call(role, setup)
+    if ( typeof def == "function" ) def.call(role, setup)
     return role
   }
   hud.define = function ( def, proto, base ){
@@ -321,6 +319,7 @@ var hud = (function ( f ){
       return hud.register(name, def, proto, R)
     }
     create.mixin = function ( extensions ){
+      extensions = extensions.prototype || extensions
       return extend(R.prototype, extensions)
     }
     return create
@@ -466,18 +465,11 @@ var hud = (function ( f ){
   }
   hud.hasRole = hasRole
   hud.getSubName = getSubName
-  hud.find = function ( name, root, strictMatch ){
+  hud.find = function ( name, root ){
     var element = null
-    if ( typeof root == "boolean" ) {
-      strictMatch = root
-      root = document.body
-    }
-    else if ( !root ) {
-      root = document.body
-      strictMatch = false
-    }
+    root = root || document.body
     hud.filterElements(root, function ( el ){
-      if ( hasRole(el, name, strictMatch) ) {
+      if ( hasRole(el, name) ) {
         element = el
         return FILTER_STOP
       }
@@ -485,17 +477,19 @@ var hud = (function ( f ){
     })
     return element
   }
-  hud.findAll = function ( name, root, strictMatch ){
-    if ( typeof root == "boolean" ) {
-      strictMatch = root
-      root = document.body
-    }
-    else if ( !root ) {
-      root = document.body
-      strictMatch = false
-    }
+  hud.findSubs = function( name, root ){
+    root = root || document.body
+    var match = new RegExp("(?:^|\\s)" + name + ":(\\w+?)(?::|\\s|$)")
     return hud.filterElements(root, function ( el ){
-      return hasRole(el, name, strictMatch)
+      return hasRole(el, match)
+        ? FILTER_PICK
+        : FILTER_SKIP
+    })
+  }
+  hud.findAll = function ( name, root ){
+    root = root || document.body
+    return hud.filterElements(root, function ( el ){
+      return hasRole(el, name)
         ? FILTER_PICK
         : FILTER_SKIP
     })

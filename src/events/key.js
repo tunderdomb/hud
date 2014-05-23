@@ -1,11 +1,62 @@
-hud.event("key", function( element, listener, capture, code ){
-  function keyup( e ){
-    if ( code == e.keyCode
-      || code && code.indexOf && ~code.indexOf(e.keyCode) )
-      return listener(e)
+(function(  ){
+
+  var specials = {
+    esc: 27,
+    enter: 13,
+    tab: 9,
+    backspace: 8,
+    space: 32,
+    shift: 16,
+    control: 17,
+    alt: 18,
+    capsLock: 20,
+    numLock: 144,
+
+    up: 38,
+    down: 40,
+    left: 37,
+    right: 39,
+
+    insert: 45,
+    "delete": 46,
+    home: 36,
+    end: 35,
+    pageUp: 33,
+    pageDown: 34,
+
+    f1: 112,
+    f2: 113,
+    f3: 114,
+    f4: 115,
+    f5: 116,
+    f6: 117,
+    f7: 118,
+    f8: 119,
+    f9: 120,
+    f10: 121,
+    f11: 122,
+    f12: 123
   }
-  element.addEventListener("keyup", keyup, false)
-  return function( element, listener, capture ){
-    element.removeEventListener("keyup", keyup, false)
-  }
-})
+
+  hud.event("key", function( element, listener, capture ){
+    function keyup( e ){
+      return listener(e, function is( code ){
+        switch( typeof code ){
+          case "number":
+            return e.keyCode == code
+          case "string":
+            return code in e
+              ? !!e[code]
+              : code in specials && specials[code] == e.keyCode
+            break
+          default :
+            return !!~code.indexOf(e.keyCode)
+        }
+      })
+    }
+    element.addEventListener("keyup", keyup, false)
+    return function( element, listener, capture ){
+      element.removeEventListener("keyup", keyup, false)
+    }
+  })
+}(  ))

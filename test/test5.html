@@ -1,0 +1,65 @@
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>hud</title>
+</head>
+<body>
+
+<div role="   hey qwe ">
+  <div role=" heyho letsgo">
+    <div role="asd:qwe"></div>
+  </div>
+  <div role=" asd wqe hey:ho qwe "></div>
+  <div role="wetg gr hey:lets:gore "></div>
+  <div role="er ter hey:go ret"></div>
+  <div role=" eer t hey:go ert"></div>
+  <div role=" ert hey:go:go ert"></div>
+</div>
+
+<div role="widget">
+  <div role="widget:name"></div>
+  <div role="widget:title"></div>
+  <div role="widget:something"></div>
+  <div role="widget:button"></div>
+  <div role="widget:button"></div>
+</div>
+
+<div role="panel">
+  <div role="button"></div>
+  <div role="button"></div>
+  <div role="button"></div>
+  <div role="button"></div>
+</div>
+
+<script type="text/javascript" src="../src/hud.js"></script>
+<script type="text/javascript">
+
+  console.log(hud.find("button"))
+  console.log(hud.findAll("button"))
+
+  hud.register("widget:name", function(  ){
+    console.log("widget:name")
+  })
+  hud.register("widget:title", function(  ){
+    console.log("widget:title")
+  })
+  hud.register("widget:something", function(  ){
+    console.log("widget:something")
+  })
+  hud.register("widget:button", function(  ){
+    console.log("widget:button")
+  })
+
+  var widget = hud.create("widget", function(  ){
+    this.extendWithSubRoles("widget")
+  })
+  console.log(widget)
+  var panel = hud.create("panel", function(  ){
+    this.extendWithRoles("button")
+  })
+  console.log(panel)
+
+</script>
+
+</body>
+</html>
