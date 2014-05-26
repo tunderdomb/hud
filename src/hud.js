@@ -175,12 +175,17 @@ var hud = (function ( f ){
       return this.findSubs(name).map(function ( el ){
         var subRoleName = name + ":" + getSubName(name, el)
         var role = hud[subRoleName]
-        return role(el, setup)
+        if ( role ) {
+          return role(el, setup)
+        }
+        else {
+          return hud.create(el)
+        }
       })
     },
     extendWithRoles: function ( name, setup ){
       var role = this
-      this.allRole(name, setup).forEach(function ( subRole ){
+      this.renderAll(name, setup).forEach(function ( subRole ){
         extendRole(role, subRole, name)
       })
       return this
@@ -297,6 +302,13 @@ var hud = (function ( f ){
     }
     return element.map(function ( el ){
       var role = new Role(el)
+      if ( typeof def == "function" ) def.call(role, setup)
+      return role
+    })
+  }
+  hud.createSubs = function( name, root, def, setup ){
+    return hud.findSubs(name, root).map(function( element ){
+      var role = new Role(element)
       if ( typeof def == "function" ) def.call(role, setup)
       return role
     })
