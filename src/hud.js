@@ -165,11 +165,11 @@ var hud = (function ( f ){
       })
       return this
     },
-    role: function ( name, setup ){
-      return hud.render(name, this.element, setup)
+    create: function( name, def, setup ){
+      return hud.create(this.find(name), def, setup)
     },
-    allRole: function ( name, setup ){
-      return hud.renderAll(name, this.element, setup)
+    createAll: function( name, def, setup ){
+      return hud.createAll(this.findAll(name), def, setup)
     },
     subRoles: function ( name, setup ){
       return this.findSubs(name).map(function ( el ){

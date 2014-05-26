@@ -21,6 +21,7 @@
 </div>
 
 <div role="panel">
+  <div role="panel:title"></div>
   <div role="button"></div>
   <div role="button"></div>
   <div role="button"></div>
@@ -54,9 +55,13 @@
     this.extendWithSubRoles("widget")
   })
   console.log("widget", widget)
+
   var panel = hud.create("panel", function(  ){
     debugger
     this.extendWithRoles("button")
+    this.role("panel:title", function(  ){
+
+    })
   })
   console.log("panel", panel)
 
