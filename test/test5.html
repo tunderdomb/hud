@@ -2,26 +2,22 @@
 <head>
   <meta charset="UTF-8">
   <title>hud</title>
+  <style type="text/css">
+    div{
+      background: rgba(149, 188, 204, 0.6);
+      padding: 10px;
+      display: block;
+    }
+  </style>
 </head>
 <body>
 
-<div role="   hey qwe ">
-  <div role=" heyho letsgo">
-    <div role="asd:qwe"></div>
-  </div>
-  <div role=" asd wqe hey:ho qwe "></div>
-  <div role="wetg gr hey:lets:gore "></div>
-  <div role="er ter hey:go ret"></div>
-  <div role=" eer t hey:go ert"></div>
-  <div role=" ert hey:go:go ert"></div>
-</div>
-
 <div role="widget">
-  <div role="widget:name"></div>
-  <div role="widget:title"></div>
-  <div role="widget:something"></div>
-  <div role="widget:button"></div>
-  <div role="widget:button"></div>
+  <div role="widget:name other role"></div>
+  <div role=" other role widget:title"></div>
+  <div role=" other role widget:something other role"></div>
+  <div role=" other role widget:button:next"></div>
+  <div role="widget:button:prev other role"></div>
 </div>
 
 <div role="panel">
@@ -34,8 +30,8 @@
 <script type="text/javascript" src="../src/hud.js"></script>
 <script type="text/javascript">
 
-  console.log(hud.find("button"))
-  console.log(hud.findAll("button"))
+  console.log("first button", hud.find("button"))
+  console.log("all buttons", hud.findAll("button"))
 
   hud.register("widget:name", function(  ){
     console.log("widget:name")
@@ -49,15 +45,20 @@
   hud.register("widget:button", function(  ){
     console.log("widget:button")
   })
+  hud.register("button", function(  ){
+    console.log("button")
+  })
 
   var widget = hud.create("widget", function(  ){
+    debugger
     this.extendWithSubRoles("widget")
   })
-  console.log(widget)
+  console.log("widget", widget)
   var panel = hud.create("panel", function(  ){
+    debugger
     this.extendWithRoles("button")
   })
-  console.log(panel)
+  console.log("panel", panel)
 
 </script>
 

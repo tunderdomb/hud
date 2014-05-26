@@ -2,13 +2,21 @@ var hud = (function ( f ){
   return f({})
 }(function ( hud ){
 
-  function each( arr, f, context ){
+  if ( !Array.prototype.forEach ) Array.prototype.forEach = function ( arr, f, context ){
     for ( var i = -1, l = arr.length; ++i < l; ) {
       f.call(context, arr[i], i, arr)
     }
+    return arr
   }
 
-  function some( arr, f, context ){
+  if ( !Array.prototype.map ) Array.prototype.map = function map( arr, f, context ){
+    for ( var i = -1, l = arr.length; ++i < l; ) {
+      arr[i] = f.call(context, arr[i], i, arr)
+    }
+    return arr
+  }
+
+  if ( !Array.prototype.some ) Array.prototype.some = function some( arr, f, context ){
     for ( var i = -1, l = arr.length; ++i < l; ) {
       if ( f.call(context, arr[i], i, arr) === true ) return true
     }
@@ -40,12 +48,6 @@ var hud = (function ( f ){
     return false
   }
 
-  function keyRole( el ){
-    var role = el.getAttribute("role")
-    if ( !role ) return ""
-    return role.replace(/^(?:.+:)?(\w+)$/, "$1")
-  }
-
   function extendRole( role, subRole, subRoleName ){
     if ( role[subRoleName] ) {
       if ( role[subRoleName].length ) {
@@ -61,14 +63,9 @@ var hud = (function ( f ){
   }
 
   function getSubName( roleName, element ){
-    roleName = new RegExp("(?:\\s+|^)" + roleName + "\\:(\\w+)(?:\\:|$)")
+    roleName = new RegExp("^.*?" + roleName + ":(\\w+).*?$")
     return element.getAttribute("role").replace(roleName, "$1")
   }
-
-  hud.util = {}
-  hud.util.each = each
-  hud.util.some = some
-  hud.util.extend = extend
 
   // constants used by the filter function
   var FILTER_PICK = hud.FILTER_PICK = 1
@@ -86,7 +83,7 @@ var hud = (function ( f ){
    *                                  can be an options object, which will be merged with the Role instance
    * */
   function Role( element ){
-    if( element instanceof Element) this.element = element
+    if ( element instanceof Element ) this.element = element
     this.events = {}
     this.channels = {}
   }
@@ -107,6 +104,7 @@ var hud = (function ( f ){
     options: function ( name, defaults ){
       var options
         , regexp
+        , attributes = [].slice.call(this.element.attributes)
       if ( typeof name == "string" ) {
         options = defaults || {}
         regexp = new RegExp("^data-" + name + "-(.+?)$")
@@ -116,7 +114,7 @@ var hud = (function ( f ){
         regexp = new RegExp("^data-(.+?)$")
       }
 
-      each(this.element.attributes, function ( attr ){
+      attributes.forEach(function ( attr ){
         var name = (attr.name.match(regexp) || [])[1]
         if ( name ) {
           name = name.replace(/-(.)/g, function ( match, group ){
@@ -149,7 +147,7 @@ var hud = (function ( f ){
     findAll: function ( name ){
       return hud.findAll(name, this.element)
     },
-    findSubs: function( name ){
+    findSubs: function ( name ){
       return hud.findSubs(name, this.element)
     },
     extendWithAll: function ( name ){
@@ -163,41 +161,35 @@ var hud = (function ( f ){
       var role = this
       this.findSubs(name).forEach(function ( subRole ){
         var subRoleName = getSubName(name, subRole)
-        if ( subRoleName ) extendRole(role, subRole, subRoleName)
+        extendRole(role, subRole, subRoleName)
       })
       return this
     },
-    role: function ( name, def, setup ){
-      var element = this.find(name)
-      if ( !element ) return null
-      return hud.create(element, def, setup)
+    role: function ( name, setup ){
+      return hud.render(name, this.element, setup)
     },
-    allRole: function ( name, def, setup ){
-      var elements = this.findAll(name)
-      each(elements, function ( el, i ){
-        elements[i] = hud.create(el, def, setup)
-      })
-      return elements
+    allRole: function ( name, setup ){
+      return hud.renderAll(name, this.element, setup)
     },
-    subRoles: function( name, def, setup ){
-      return this.findSubs(name).map(function( el ){
-        var subRoleName = getSubName(name, el)
-        if( subRoleName ) subRoleName = name+":"+subRoleName
-        return hud.create(el, subRoleName||def, setup)
+    subRoles: function ( name, setup ){
+      return this.findSubs(name).map(function ( el ){
+        var subRoleName = name + ":" + getSubName(name, el)
+        var role = hud[subRoleName]
+        return role(el, setup)
       })
     },
-    extendWithRoles: function ( name, def, setup ){
+    extendWithRoles: function ( name, setup ){
       var role = this
-      this.allRole(name, def, setup).forEach(function ( subRole ){
+      this.allRole(name, setup).forEach(function ( subRole ){
         extendRole(role, subRole, name)
       })
       return this
     },
-    extendWithSubRoles: function ( name, def, setup ){
+    extendWithSubRoles: function ( name, setup ){
       var role = this
-      this.subRoles(name, def, setup).forEach(function ( subRole ){
+      this.subRoles(name, setup).forEach(function ( subRole ){
         var subRoleName = getSubName(name, subRole.element)
-        if ( subRoleName ) extendRole(role, subRole, subRoleName)
+        extendRole(role, subRole, subRoleName)
       })
       return this
     },
@@ -226,7 +218,7 @@ var hud = (function ( f ){
       channel = this.channels[channel]
       if ( !channel ) return this
       message = [].slice.call(arguments, 1)
-      each(channel, function ( listener ){
+      channel.forEach(function ( listener ){
         listener.apply(this, message)
       }, this)
       return this
@@ -254,7 +246,7 @@ var hud = (function ( f ){
       var role = this
       if ( !this.events[event] || !this.events[event].length ) return this
 
-      some(this.events[event], function ( l ){
+      this.events[event].some(function ( l ){
         if ( l[0] == listener ) {
           if ( events[event] ) {
             // removeEventListener(hook, capture)
@@ -287,12 +279,27 @@ var hud = (function ( f ){
     if ( typeof element == "string" ) {
       element = hud.find(element)
     }
-    if ( hud[def] != undefined ) {
-      return hud[def](element, setup)
+    else if ( typeof element == "function" ) {
+      setup = def
+      def = element
     }
     var role = new Role(element)
     if ( typeof def == "function" ) def.call(role, setup)
     return role
+  }
+  hud.createAll = function ( element, def, setup ){
+    if ( typeof element == "string" ) {
+      element = hud.findAll(element)
+    }
+    else if ( typeof element == "function" ) {
+      setup = def
+      def = element
+    }
+    return element.map(function ( el ){
+      var role = new Role(el)
+      if ( typeof def == "function" ) def.call(role, setup)
+      return role
+    })
   }
   hud.define = function ( def, proto, base ){
     base = hud[base] ? hud[base] : base || Role
@@ -329,26 +336,25 @@ var hud = (function ( f ){
   }
   hud.render = function ( name, root, setup ){
     if ( !hud[name] ) return null
-    if ( !setup ) {
+    if ( !setup && !(root instanceof Element) ) {
       setup = root
       root = null
     }
-    var el = hud.find(name, root, true)
+    var el = typeof name == "string"
+      ? hud.find(name, root, true)
+      : name
     if ( !el ) return null
     return hud[name](el, setup)
   }
   hud.renderAll = function ( name, root, setup ){
     if ( !hud[name] ) return null
-    if ( !setup ) {
+    if ( !setup && !(root instanceof Element) ) {
       setup = root
       root = null
     }
-    var elements = hud.findAll(name, root, true)
-    var i = -1, l = elements.length
-    while ( ++i < l ) {
-      elements[i] = hud[name](elements[i], setup)
-    }
-    return elements
+    return hud.findAll(name, root).map(function ( el ){
+      return hud[name](el, setup)
+    })
   }
 
   /**
@@ -477,7 +483,7 @@ var hud = (function ( f ){
     })
     return element
   }
-  hud.findSubs = function( name, root ){
+  hud.findSubs = function ( name, root ){
     root = root || document.body
     var match = new RegExp("(?:^|\\s)" + name + ":(\\w+?)(?::|\\s|$)")
     return hud.filterElements(root, function ( el ){
