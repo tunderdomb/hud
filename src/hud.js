@@ -175,7 +175,7 @@ var hud = (function ( f ){
     subRoles: function ( name, setup ){
       return this.findSubs(name).map(function ( el ){
         var subRoleName = name + ":" + getSubName(name, el)
-        var role = hud[subRoleName]
+        var role = hud[subRoleName] || hud[name]
         if ( role ) {
           return role(el, setup)
         }
