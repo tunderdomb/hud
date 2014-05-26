@@ -70,7 +70,8 @@ var hud = (function ( f ){
   // constants used by the filter function
   var FILTER_PICK = hud.FILTER_PICK = 1
     , FILTER_SKIP = hud.FILTER_SKIP = 2
-    , FILTER_IGNORE = hud.FILTER_STOP = hud.FILTER_IGNORE = 3
+    , FILTER_IGNORE = hud.FILTER_STOP = 3
+    , FILTER_IGNORE_PICK = hud.FILTER_IGNORE_PICK = 3
     , FILTER_STOP = 4
   // the event api, also a hash for custom events
     , events
@@ -444,6 +445,9 @@ var hud = (function ( f ){
     if ( !l ) return ret
     while ( ++i < l ) {
       switch ( filter(children[i]) ) {
+        case FILTER_IGNORE_PICK:
+          ret.push(children[i])
+          break
         case FILTER_PICK:
           ret.push(children[i])
           if ( deep && i < l && children[i][childTypes].length ) {
@@ -500,7 +504,7 @@ var hud = (function ( f ){
     var match = new RegExp("(?:^|\\s)" + name + ":(\\w+?)(?::|\\s|$)")
     return hud.filterElements(root, function ( el ){
       return hasRole(el, match)
-        ? FILTER_PICK
+        ? FILTER_IGNORE_PICK
         : FILTER_SKIP
     })
   }
