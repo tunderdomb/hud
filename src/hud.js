@@ -70,9 +70,9 @@ var hud = (function ( f ){
   // constants used by the filter function
   var FILTER_PICK = hud.FILTER_PICK = 1
     , FILTER_SKIP = hud.FILTER_SKIP = 2
-    , FILTER_IGNORE = hud.FILTER_STOP = 3
-    , FILTER_IGNORE_PICK = hud.FILTER_IGNORE_PICK = 3
-    , FILTER_STOP = 4
+    , FILTER_IGNORE = hud.FILTER_IGNORE = 3
+    , FILTER_IGNORE_PICK = hud.FILTER_IGNORE_PICK = 4
+    , FILTER_STOP = hud.FILTER_STOP = 5
   // the event api, also a hash for custom events
     , events
 

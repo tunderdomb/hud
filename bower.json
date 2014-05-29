@@ -1,6 +1,6 @@
 {
   "name": "hud",
-  "version": "1.12.5",
+  "version": "1.13.2",
   "main": "src/hud.js",
   "ignore": [
     ".idea/",
