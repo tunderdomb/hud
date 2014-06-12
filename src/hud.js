@@ -1,5 +1,5 @@
 var hud = (function ( f ){
-  return f({})
+  return f(hud || {})
 }(function ( hud ){
 
   if ( !Array.prototype.forEach ) Array.prototype.forEach = function ( arr, f, context ){

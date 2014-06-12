@@ -20,4 +20,4 @@
       height: height
     }
   }
-}(hud || (hud = {})))
+}(hud || (hud = window.hud = {})))

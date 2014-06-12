@@ -14,4 +14,4 @@
     }
     return scrollable = eventTarget
   }
-}(hud || (hud = {})))
+}(hud || (hud = window.hud = {})))

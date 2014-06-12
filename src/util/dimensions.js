@@ -119,4 +119,4 @@
     }
   }
 
-}(hud || (hud = {})))
+}(hud || (hud = window.hud = {})))

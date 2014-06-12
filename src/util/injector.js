@@ -97,4 +97,4 @@
       ok = true
     }
   })
-}(hud || (hud = {})))
+}(hud || (hud = window.hud = {})))
