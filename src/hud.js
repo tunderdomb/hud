@@ -438,6 +438,7 @@ var hud = (function ( f ){
   hud.filter = function ( element, filter, deep, childTypes ){
     deep = deep == undefined ? true : deep
     var children = element[childTypes] || element
+      , descendants
       , i = -1
       , l = children.length
       , ret = []
@@ -450,7 +451,8 @@ var hud = (function ( f ){
           break
         case FILTER_PICK:
           ret.push(children[i])
-          if ( deep && i < l && children[i][childTypes].length ) {
+          descendants = children[i][childTypes]
+          if ( deep && i < l && descendants && descendants.length ) {
             stack.push([children, i, l])
             children = children[i][childTypes]
             i = -1
@@ -458,7 +460,8 @@ var hud = (function ( f ){
           }
           break
         case FILTER_SKIP:
-          if ( deep && i < l && children[i][childTypes].length ) {
+          descendants = children[i][childTypes]
+          if ( deep && i < l && descendants && descendants.length ) {
             stack.push([children, i, l])
             children = children[i][childTypes]
             i = -1

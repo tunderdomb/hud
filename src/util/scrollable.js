@@ -1,4 +1,4 @@
-(function(  ){
+(function( hud ){
   var scrollable
   hud.getScrollable = function ( eventTarget ){
     if ( scrollable ) return scrollable
@@ -14,4 +14,4 @@
     }
     return scrollable = eventTarget
   }
-}(  ))
+}(hud || (hud = {})))

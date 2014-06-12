@@ -1,4 +1,4 @@
-(function(  ){
+(function (){
 
   var specials = {
     esc: 27,
@@ -38,25 +38,33 @@
     f12: 123
   }
 
-  hud.event("key", function( element, listener, capture ){
-    function keyup( e ){
-      return listener(e, function is( code ){
-        switch( typeof code ){
-          case "number":
-            return e.keyCode == code
-          case "string":
-            return code in e
-              ? !!e[code]
-              : code in specials && specials[code] == e.keyCode
-            break
-          default :
-            return !!~code.indexOf(e.keyCode)
-        }
-      })
+  function createKeyEvent( e ){
+    e.is = function is( code ){
+      switch ( typeof code ) {
+        case "number":
+          return e.keyCode == code
+        case "string":
+          return code in e
+            ? !!e[code]
+            : code in specials && specials[code] == e.keyCode
+        default:
+          if ( arguments.length > 1 ) {
+            code = [].slice.call(arguments)
+          }
+          return code.every(is)
+      }
     }
+    return e
+  }
+
+  hud.event("key", function ( element, listener, capture ){
+    function keyup( e ){
+      return listener(e, createKeyEvent(e))
+    }
+
     element.addEventListener("keyup", keyup, false)
-    return function( element, listener, capture ){
+    return function ( element, listener, capture ){
       element.removeEventListener("keyup", keyup, false)
     }
   })
-}(  ))
+}())

@@ -80,7 +80,7 @@ hud.Role.extend((function(  ){
   return {
     initReactor: function(  ){
       var values = this.reactors = {}
-      hud.util.each(this.findAllSub("reactor", true), function( reactor ){
+      hud.util.each(this.findSubs("reactor", true), function( reactor ){
         hud.util.each(reactor.attributes, function ( attr ){
           matchProps(values, attr, "value")
         })

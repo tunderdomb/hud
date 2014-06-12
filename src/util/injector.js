@@ -1,4 +1,4 @@
-(function (){
+(function ( hud ){
 
   function asyncLoader( load ){
     return function ( sources, done ){
@@ -97,4 +97,4 @@
       ok = true
     }
   })
-}())
+}(hud || (hud = {})))
