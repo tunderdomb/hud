@@ -50,7 +50,7 @@ var hud = (function ( f ){
 
   function extendRole( role, subRole, subRoleName ){
     if ( role[subRoleName] ) {
-      if ( role[subRoleName].length ) {
+      if ( "length" in role[subRoleName] ) {
         role[subRoleName].push(subRole)
       }
       else {

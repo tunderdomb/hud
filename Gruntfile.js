@@ -2,11 +2,11 @@ module.exports = function ( grunt ){
 
   grunt.initConfig({release: {
     options: {
-      bump: false, //default: true
+      bump: true, //default: true
       file: 'package.json', //default: package.json
       add: false, //default: true
-      commit: true, //default: true
-      tag: true, //default: true
+      commit: false, //default: true
+      tag: false, //default: true
       push: false, //default: true
       pushTags: false, //default: true
       npm: false, //default: true
