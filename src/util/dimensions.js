@@ -42,7 +42,7 @@
   }
 
   var getScrollable = hud.getScrollable
-    , getViewPortSize = hud.getViewPortSize
+    , getViewPortSize = hud.viewport
 
   if( !getScrollable ) throw new Error("Missing component 'hud.scrollable'")
   if( !getViewPortSize ) throw new Error("Missing component 'hud.viewport'")
