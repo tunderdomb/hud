@@ -1,5 +1,5 @@
 (function (){
-  var getPositions = hud.dimensions
+  var getPositions = hud.positions
 
   var contact = hud.event("contact", function ( element, listener, capture ){
     function contactListener(){
