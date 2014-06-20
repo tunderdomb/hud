@@ -6,7 +6,7 @@ hud.Role.extend({
     this.element.classList.remove(cls)
   },
   hasClass: function( cls ){
-    this.element.classList.contains(cls)
+    return this.element.classList.contains(cls)
   },
   toggleClass: function( cls ){
     this.element.classList.toggle(cls)
