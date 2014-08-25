@@ -62,8 +62,7 @@ function removeEventListener( role, type, listener, capture ){
  * @param {Element} element - the element of the role controller
  *                                  can be an options object, which will be merged with the Role instance
  * */
-function Role( name, element ){
-  this.role = name
+function Role( element ){
   this.element = element
   this.events = {}
   this.channels = {}

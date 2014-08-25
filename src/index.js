@@ -13,47 +13,42 @@ function noop(  ){}
 
 hud.role = hud()
 
-function hud( name, globalInit, proto ){
-  globalInit = globalInit || noop
+function hud( name, init, proto ){
+  init = init || noop
   // lazy loading to avoid circular reference
   BaseRole = BaseRole || require("./core/Role")
-  function Role( name, element, localInit, args ){
-    BaseRole.call(this, name, element)
-    globalInit.apply(this, args)
-    if( localInit ) localInit.apply(this, args)
+  function Role( element, args ){
+    BaseRole.call(this, element)
+    init.apply(this, args)
   }
 
   extend(Role.prototype, BaseRole.prototype)
   extend(Role.prototype, proto)
+  Role.prototype.role = name
 
-  function create( element ){
+  function create( element, root, args ){
     if( typeof element == "string" ) {
-      element = hud.find(element)
+      if ( Array.isArray(root) ) {
+        args = root
+        root = null
+      }
+      element = find(element, root)
     }
-    return new Role(name, element, null, [].slice.call(arguments, 1))
+    else {
+      if ( Array.isArray(root) ) {
+        args = root
+        root = null
+      }
+      else {
+        args = root
+        root = null
+      }
+    }
+    return new Role(element, args)
   }
 
   create.prototype = Role.prototype
   create.extend = extend.bind(null, Role.prototype)
-
-  create.find = function( root ){
-    var element = find(name, root)
-    if( !element ) return null
-    return new Role(name, element, null, [].slice.call(arguments, 1))
-  }
-
-  create.all = function( root, localInit ){
-    var args = [].slice.call(arguments, 2)
-    return find.all(name, root).map(function( element ){
-      return new Role(name, element, localInit, args)
-    })
-  }
-  create.subs = function( root, localInit ){
-    var args = [].slice.call(arguments, 2)
-    return find.subsOf(name, root).map(function( element ){
-      return new Role(name, element, localInit, args)
-    })
-  }
 
   hud[name] = create
 
