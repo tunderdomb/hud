@@ -11,7 +11,7 @@ module.exports = global.hud = hud
 
 function noop(  ){}
 
-hud.role = hud()
+hud.create = hud()
 
 function hud( name, init, proto ){
   init = init || noop
@@ -19,7 +19,7 @@ function hud( name, init, proto ){
   BaseRole = BaseRole || require("./core/Role")
   function Role( element, args ){
     BaseRole.call(this, element)
-    init.apply(this, args)
+    init.apply(this, args||[])
   }
 
   extend(Role.prototype, BaseRole.prototype)
@@ -27,24 +27,54 @@ function hud( name, init, proto ){
   Role.prototype.role = name
 
   function create( element, root, args ){
-    if( typeof element == "string" ) {
+    // create([])
+    if ( Array.isArray(element) ) {
+      args = element
+      element = find(name)
+    }
+    // create("", Element, [])
+    // create("", [])
+    else if( typeof element == "string" ) {
       if ( Array.isArray(root) ) {
         args = root
         root = null
       }
       element = find(element, root)
     }
-    else {
+    // create(Element, [])
+    // consider the first element the the role element
+    else if ( Array.isArray(root) ) {
+      args = root
+      root = null
+    }
+    return new Role(element, args)
+  }
+
+  create.all = function( element, root, args ){
+    // create([])
+    if ( Array.isArray(element) ) {
+      args = element
+      element = find.all(name)
+    }
+    // create("", Element, [])
+    // create("", [])
+    else if( typeof element == "string" ) {
       if ( Array.isArray(root) ) {
         args = root
         root = null
       }
-      else {
-        args = root
-        root = null
-      }
+      element = find.all(element, root)
     }
-    return new Role(element, args)
+    // create(Element, [])
+    // consider the first element the root
+    else {
+      args = root
+      root = element
+      element = find.all(name, root)
+    }
+    return element.map(function( el ){
+      return new Role(el, args)
+    })
   }
 
   create.prototype = Role.prototype

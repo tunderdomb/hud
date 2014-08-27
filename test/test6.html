@@ -7,24 +7,27 @@
 
 <script type="text/javascript" src="../hud.js"></script>
 <script type="text/javascript">
-  var b = hud("body", function ( one, two, three ){
+  var create = hud("body", function ( one, two, three ){
     console.log(this)
     console.log(arguments)
   }, {
 
   })
 
-  b(document.body)
-  b(document.body, function (){})
-  b(document.body, function (){}, [])
-  b(document.body, [])
-  b("body")
-  b("body", document.body)
-  b("body", function (){})
-  b("body", [])
-  b("body", function (){}, [])
-  b("body", document.body, function (){}, [])
-  b("body", document.body, [])
+  create([])
+  create(document.body)
+  create(document.body, [])
+  create("body")
+  create("body", document.body)
+  create("body", [])
+  create("body", document.body, [])
+
+  create.all([])
+  create.all("")
+  create.all("", document.body)
+  create.all("", [])
+  create.all(document.body)
+  create.all(document.body, [])
 
 </script>
 

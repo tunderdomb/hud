@@ -128,8 +128,7 @@ function removeEventListener( role, type, listener, capture ){
  * @param {Element} element - the element of the role controller
  *                                  can be an options object, which will be merged with the Role instance
  * */
-function Role( name, element ){
-  this.role = name
+function Role( element ){
   this.element = element
   this.events = {}
   this.channels = {}
@@ -1532,56 +1531,87 @@ module.exports = request
 (function (global){
 var extend = require("./core/extend")
 var BaseRole
-var find = role.find = require("./core/find")
-role.filter = require("./core/filter")
-role.event = require("./core/event")
-role.attribute = require("./core/attribute")
-role.request = require("./core/request")
-role.inject = require("./core/inject")
+var find = hud.find = require("./core/find")
+hud.filter = require("./core/filter")
+hud.event = require("./core/event")
+hud.attribute = require("./core/attribute")
+hud.request = require("./core/request")
+hud.inject = require("./core/inject")
 
-module.exports = global.hud = role
+module.exports = global.hud = hud
 
 function noop(  ){}
 
-role("anonymous")
+hud.create = hud()
 
-function role( name, globalInit, proto ){
-  globalInit = globalInit || noop
+function hud( name, init, proto ){
+  init = init || noop
   // lazy loading to avoid circular reference
   BaseRole = BaseRole || require("./core/Role")
-  function Role( name, element, localInit, args ){
-    BaseRole.call(this, name, element)
-    globalInit.apply(this, args)
-    if( localInit ) localInit.apply(this, args)
+  function Role( element, args ){
+    BaseRole.call(this, element)
+    init.apply(this, args||[])
   }
 
   extend(Role.prototype, BaseRole.prototype)
   extend(Role.prototype, proto)
+  Role.prototype.role = name
 
-  function create( element ){
-    if( typeof element == "string" ) {
-      element = hud.find(element)
+  function create( element, root, args ){
+    // create([])
+    if ( Array.isArray(element) ) {
+      args = element
+      element = find(name)
     }
-    return new Role(name, element, null, [].slice.call(arguments, 1))
+    // create("", Element, [])
+    // create("", [])
+    else if( typeof element == "string" ) {
+      if ( Array.isArray(root) ) {
+        args = root
+        root = null
+      }
+      element = find(element, root)
+    }
+    // create(Element, [])
+    // consider the first element the the role element
+    else if ( Array.isArray(root) ) {
+      args = root
+      root = null
+    }
+    return new Role(element, args)
   }
 
-  create.prototype = Role.prototype
-  create.extend = extend.bind(Role.prototype)
-
-  create.find = function( root ){
-    var element = find(name, root)
-    if( !element ) return null
-    return new Role(name, element, null, [].slice.call(arguments, 1))
-  }
-
-  create.all = function( root, init2 ){
-    var args = [].slice.call(arguments, 2)
-    return find.all(name, root).map(function( element ){
-      return new Role(name, element, init2, args)
+  create.all = function( element, root, args ){
+    // create([])
+    if ( Array.isArray(element) ) {
+      args = element
+      element = find.all(name)
+    }
+    // create("", Element, [])
+    // create("", [])
+    else if( typeof element == "string" ) {
+      if ( Array.isArray(root) ) {
+        args = root
+        root = null
+      }
+      element = find.all(element, root)
+    }
+    // create(Element, [])
+    // consider the first element the root
+    else {
+      args = root
+      root = element
+      element = find.all(name, root)
+    }
+    return element.map(function( el ){
+      return new Role(el, args)
     })
   }
 
-  role[name] = create
+  create.prototype = Role.prototype
+  create.extend = extend.bind(null, Role.prototype)
+
+  hud[name] = create
 
   return create
 }
