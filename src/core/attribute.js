@@ -1,9 +1,9 @@
-
 var attribute = module.exports = {}
 
 attribute.contains = contains
 attribute.all = all
 attribute.subname = subname
+attribute.rawSubname = rawSubname
 
 function contains( element, role ){
   var roles = all(element)
@@ -29,8 +29,15 @@ function all( element ){
   return roles.trim().split(/\s+/)
 }
 
-
+function rawSubname( roleName, element ){
+  var role = element.getAttribute("role")
+  return role && role.replace(new RegExp("^.*?" + roleName + ":([\\w\\-]+).*?$"), "$1")
+}
 function subname( roleName, element ){
-  roleName = new RegExp("^.*?" + roleName + ":(\\w+).*?$")
-  return element.getAttribute("role").replace(roleName, "$1")
+  var subName = rawSubname(roleName, element)
+  return subName && subName
+    .toLocaleLowerCase()
+    .replace(/-(.)/, function ( m, l ){
+      return l.toUpperCase()
+    })
 }

@@ -9,72 +9,55 @@ hud.inject = require("./core/inject")
 
 module.exports = global.hud = hud
 
-function noop(  ){}
+function noop(){}
 
 hud.create = hud()
+
+function autoCreate(){
+  var roleObject = this
+    , roleName = roleObject.role
+  hud.find.subsOf(roleName, roleObject.element).map(function ( subElement ){
+    var subName = hud.attribute.subname(roleName, subElement)
+    var rawSubName = hud.attribute.rawSubname(roleName, subElement)
+    var fullSubName = roleName + ":" + rawSubName
+    roleObject[subName] = hud[fullSubName] ? hud[fullSubName](subElement) : hud.create({element: subElement})
+  })
+}
 
 function hud( name, init, proto ){
   init = init || noop
   // lazy loading to avoid circular reference
   BaseRole = BaseRole || require("./core/Role")
-  function Role( element, args ){
+  function Role( element, args, internalInit ){
     BaseRole.call(this, element)
-    init.apply(this, args||[])
+    if ( internalInit ) internalInit.apply(this, args)
+    init.apply(this, args || [])
   }
 
   extend(Role.prototype, BaseRole.prototype)
   extend(Role.prototype, proto)
   Role.prototype.role = name
 
-  function create( element, root, args ){
-    // create([])
-    if ( Array.isArray(element) ) {
-      args = element
-      element = find(name)
+  function create( options, args ){
+    if ( !args && Array.isArray(options) ) {
+      args = options
+      options = {}
     }
-    // create("", Element, [])
-    // create("", [])
-    else if( typeof element == "string" ) {
-      if ( Array.isArray(root) ) {
-        args = root
-        root = null
-      }
-      element = find(element, root)
-    }
-    // create(Element, [])
-    // consider the first element the the role element
-    else if ( Array.isArray(root) ) {
-      args = root
-      root = null
-    }
-    return new Role(element, args)
-  }
 
-  create.all = function( element, root, args ){
-    // create([])
-    if ( Array.isArray(element) ) {
-      args = element
-      element = find.all(name)
+    var root = options.root
+      , element = options.element || name
+      , all = !!options.all
+      , auto = !!options.auto ? autoCreate : null
+
+    if ( typeof element == "string" ) {
+      element = all
+        ? hud.find.all(element, root)
+        : hud.find(element, root)
     }
-    // create("", Element, [])
-    // create("", [])
-    else if( typeof element == "string" ) {
-      if ( Array.isArray(root) ) {
-        args = root
-        root = null
-      }
-      element = find.all(element, root)
-    }
-    // create(Element, [])
-    // consider the first element the root
-    else {
-      args = root
-      root = element
-      element = find.all(name, root)
-    }
-    return element.map(function( el ){
-      return new Role(el, args)
+    if ( all ) return element.map(function ( el ){
+      return new Role(el, args, auto)
     })
+    return new Role(element, args, auto)
   }
 
   create.prototype = Role.prototype

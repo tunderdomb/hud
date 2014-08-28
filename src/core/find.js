@@ -59,7 +59,7 @@ find.subsOf = function ( name, root ){
   if ( !root ) {
     throw new Error("Couldn't search for " + name + " in root (" + root + ")")
   }
-  var match = new RegExp("(?:^|\\s)" + name + ":(\\w+?)(?::|\\s|$)")
+  var match = new RegExp("(?:^|\\s)" + name + ":([\\w\\-]+?)(?::|\\s|$)")
   return filter.elements(root, function ( el ){
     return attr.contains(el, match)
       ? filter.FILTER_PICK
