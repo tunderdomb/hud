@@ -47,7 +47,7 @@ function hud( name, init, proto ){
     var root = options.root
       , element = options.element || name
       , all = !!options.all
-      , auto = !!options.auto ? autoCreate : null
+      , auto = options.auto == undefined || !!options.auto ? autoCreate : null
 
     if ( typeof element == "string" ) {
       element = all
