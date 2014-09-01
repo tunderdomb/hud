@@ -4,6 +4,7 @@ attribute.contains = contains
 attribute.all = all
 attribute.subname = subname
 attribute.rawSubname = rawSubname
+attribute.keyRole = keyRole
 
 function contains( element, role ){
   var roles = all(element)
@@ -40,4 +41,7 @@ function subname( roleName, element ){
     .replace(/-(.)/, function ( m, l ){
       return l.toUpperCase()
     })
+}
+function keyRole( roleName ){
+  return roleName && roleName.match(/^(?:.+:)?(.+)$/)[1]
 }
