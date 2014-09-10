@@ -58,12 +58,14 @@ function createKeyEvent( e ){
 }
 
 event("key", function ( element, listener, capture ){
-  function keyup( e ){
-    return listener(e, createKeyEvent(e))
+  function onKey( e ){
+    return listener(createKeyEvent(e))
   }
 
-  element.addEventListener("keyup", keyup, false)
-  return function ( element, listener, capture ){
-    element.removeEventListener("keyup", keyup, false)
+  element.addEventListener("keydown", onKey, false)
+  element.addEventListener("keyup", onKey, false)
+  return function ( element/*, listener, capture*/ ){
+    element.removeEventListener("keydown", onKey, false)
+    element.removeEventListener("keyup", onKey, false)
   }
 })
