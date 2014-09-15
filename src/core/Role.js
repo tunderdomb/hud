@@ -11,7 +11,7 @@ function normalizeValue( value ){
     case value == "true":
     case value == "false":
       return Boolean(value)
-    case /^(\d*[\.,])?\d+?$/.test(value):
+    case /^-?(\d*[\.,])?\d+?$/.test(value):
       return parseFloat(value)
     default:
       return value
@@ -68,7 +68,7 @@ function Role( element ){
   this.channels = {}
 }
 
-Role.extend = extend.bind(Role.prototype)
+Role.extend = extend.bind(null, Role.prototype)
 extend(Role.prototype, Radio.prototype)
 extend(Role.prototype, {
   destroy: function (){
