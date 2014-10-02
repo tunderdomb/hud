@@ -77,7 +77,7 @@ function normalizeValue( value ){
     case value == "true":
     case value == "false":
       return Boolean(value)
-    case /^(\d*[\.,])?\d+?$/.test(value):
+    case /^-?(\d*[\.,])?\d+?$/.test(value):
       return parseFloat(value)
     default:
       return value
@@ -134,7 +134,7 @@ function Role( element ){
   this.channels = {}
 }
 
-Role.extend = extend.bind(Role.prototype)
+Role.extend = extend.bind(null, Role.prototype)
 extend(Role.prototype, Radio.prototype)
 extend(Role.prototype, {
   destroy: function (){
@@ -428,12 +428,13 @@ extend(Role.prototype, {
   }
 })
 },{"../index":11,"./Radio":1,"./event":4,"./extend":5}],3:[function(require,module,exports){
-
 var attribute = module.exports = {}
 
 attribute.contains = contains
 attribute.all = all
 attribute.subname = subname
+attribute.rawSubname = rawSubname
+attribute.keyRole = keyRole
 
 function contains( element, role ){
   var roles = all(element)
@@ -459,10 +460,20 @@ function all( element ){
   return roles.trim().split(/\s+/)
 }
 
-
+function rawSubname( roleName, element ){
+  var role = element.getAttribute("role")
+  return role && role.replace(new RegExp("^.*?" + roleName + ":([\\w\\-]+).*?$"), "$1")
+}
 function subname( roleName, element ){
-  roleName = new RegExp("^.*?" + roleName + ":(\\w+).*?$")
-  return element.getAttribute("role").replace(roleName, "$1")
+  var subName = rawSubname(roleName, element)
+  return subName && subName
+    .toLocaleLowerCase()
+    .replace(/-(.)/g, function ( m, l ){
+      return l.toUpperCase()
+    })
+}
+function keyRole( roleName ){
+  return roleName && roleName.match(/^(?:.+:)?(.+)$/)[1]
 }
 },{}],4:[function(require,module,exports){
 var eventCache = {}
@@ -679,7 +690,7 @@ find.subsOf = function ( name, root ){
   if ( !root ) {
     throw new Error("Couldn't search for " + name + " in root (" + root + ")")
   }
-  var match = new RegExp("(?:^|\\s)" + name + ":(\\w+?)(?::|\\s|$)")
+  var match = new RegExp("(?:^|\\s)" + name + ":([\\w\\-]+?)(?::|\\s|$)")
   return filter.elements(root, function ( el ){
     return attr.contains(el, match)
       ? filter.FILTER_PICK
@@ -1532,85 +1543,92 @@ module.exports = request
 var extend = require("./core/extend")
 var BaseRole
 var find = hud.find = require("./core/find")
+var attr = hud.attribute = require("./core/attribute")
 hud.filter = require("./core/filter")
 hud.event = require("./core/event")
-hud.attribute = require("./core/attribute")
 hud.request = require("./core/request")
 hud.inject = require("./core/inject")
 
 module.exports = global.hud = hud
 
-function noop(  ){}
+function noop(){}
 
 hud.create = hud()
+hud.create.auto = false
+
+function autoCreate( multiple ){
+  return function (){
+    var roleObject = this
+      , roleName = attr.keyRole(roleObject.role)
+    find.subsOf(roleName, roleObject.element).map(function ( subElement ){
+      var subName = attr.subname(roleName, subElement)
+      var rawSubName = attr.rawSubname(roleName, subElement)
+      var fullSubName = roleName + ":" + rawSubName
+      var subRoleObject = hud[fullSubName]
+        ? hud[fullSubName](subElement)
+        : hud.create({element: subElement})
+      if ( multiple && multiple.length && ~multiple.indexOf(rawSubName) ) {
+        roleObject[subName] = roleObject[subName] || []
+        roleObject[subName].push(subRoleObject)
+        return
+      }
+      roleObject[subName] = subRoleObject
+    })
+  }
+}
 
 function hud( name, init, proto ){
   init = init || noop
   // lazy loading to avoid circular reference
   BaseRole = BaseRole || require("./core/Role")
-  function Role( element, args ){
+  function Role( element, args, internalInit ){
     BaseRole.call(this, element)
-    init.apply(this, args||[])
+    if ( internalInit ) internalInit.apply(this, args)
+    init.apply(this, args || [])
   }
 
   extend(Role.prototype, BaseRole.prototype)
   extend(Role.prototype, proto)
   Role.prototype.role = name
 
-  function create( element, root, args ){
-    // create([])
-    if ( Array.isArray(element) ) {
-      args = element
-      element = find(name)
+  function create( options, args ){
+    if ( !options ) {
+      options = create
+      args = []
     }
-    // create("", Element, [])
-    // create("", [])
-    else if( typeof element == "string" ) {
-      if ( Array.isArray(root) ) {
-        args = root
-        root = null
-      }
-      element = find(element, root)
+    else if ( !args && Array.isArray(options) ) {
+      args = options
+      options = create.options
     }
-    // create(Element, [])
-    // consider the first element the the role element
-    else if ( Array.isArray(root) ) {
-      args = root
-      root = null
-    }
-    return new Role(element, args)
-  }
 
-  create.all = function( element, root, args ){
-    // create([])
-    if ( Array.isArray(element) ) {
-      args = element
-      element = find.all(name)
+    var root = options.root || create.root
+      , element = options.element || create.element || name
+      , all = options.all == undefined ? create.all : !!options.all
+      , multiple = options.multiple || create.multiple || []
+      , auto = options.auto == undefined ? create.auto : options.auto
+
+    auto = auto && autoCreate(multiple)
+
+    if ( typeof element == "string" ) {
+      element = all
+        ? find.all(element, root)
+        : find(element, root)
     }
-    // create("", Element, [])
-    // create("", [])
-    else if( typeof element == "string" ) {
-      if ( Array.isArray(root) ) {
-        args = root
-        root = null
-      }
-      element = find.all(element, root)
-    }
-    // create(Element, [])
-    // consider the first element the root
-    else {
-      args = root
-      root = element
-      element = find.all(name, root)
-    }
-    return element.map(function( el ){
-      return new Role(el, args)
+    if ( all ) return element.map(function ( el ){
+      return new Role(el, args, auto)
     })
+    return new Role(element, args, auto)
   }
 
+  //noinspection JSPotentiallyInvalidConstructorUsage
   create.prototype = Role.prototype
+  //noinspection JSUnresolvedFunction
   create.extend = extend.bind(null, Role.prototype)
-
+  create.auto = true
+  create.all = false
+  create.root = null
+  create.element = null
+  create.multiple = []
   hud[name] = create
 
   return create

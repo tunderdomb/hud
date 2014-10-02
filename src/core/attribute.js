@@ -38,7 +38,7 @@ function subname( roleName, element ){
   var subName = rawSubname(roleName, element)
   return subName && subName
     .toLocaleLowerCase()
-    .replace(/-(.)/, function ( m, l ){
+    .replace(/-(.)/g, function ( m, l ){
       return l.toUpperCase()
     })
 }
