@@ -9,7 +9,9 @@ module.exports = Role
 function normalizeValue( value ){
   switch ( true ) {
     case value == "true":
+      return true
     case value == "false":
+      return false
       return Boolean(value)
     case /^-?(\d*[\.,])?\d+?$/.test(value):
       return parseFloat(value)
