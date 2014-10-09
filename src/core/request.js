@@ -259,7 +259,11 @@ RequestOptions.prototype.addQuery = function ( key, value ){
   if ( value != undefined ) {
     this.query[key] = value
   }
-  else if ( typeof key != "string" ) extend(this.headers, key)
+  else if ( typeof key != "string" ) {
+    for ( var field in key ) {
+      this.query[field] = key[field]
+    }
+  }
 }
 RequestOptions.prototype.setUser = function ( user, password ){
   this.user = user

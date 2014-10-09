@@ -75,7 +75,9 @@ module.exports = Role
 function normalizeValue( value ){
   switch ( true ) {
     case value == "true":
+      return true
     case value == "false":
+      return false
       return Boolean(value)
     case /^-?(\d*[\.,])?\d+?$/.test(value):
       return parseFloat(value)
@@ -1139,7 +1141,11 @@ RequestOptions.prototype.addQuery = function ( key, value ){
   if ( value != undefined ) {
     this.query[key] = value
   }
-  else if ( typeof key != "string" ) extend(this.headers, key)
+  else if ( typeof key != "string" ) {
+    for ( var field in key ) {
+      this.query[field] = key[field]
+    }
+  }
 }
 RequestOptions.prototype.setUser = function ( user, password ){
   this.user = user
