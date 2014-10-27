@@ -28,42 +28,35 @@
   <div role="button"></div>
 </div>
 
-<script type="text/javascript" src="../src/hud.js"></script>
+<script type="text/javascript" src="../hud.js"></script>
 <script type="text/javascript">
 
   console.log("first button", hud.find("button"))
-  console.log("all buttons", hud.findAll("button"))
+  console.log("all buttons", hud.find.all("button"))
 
-  hud.register("widget:name", function(  ){
+  hud("widget:name", function(  ){
     console.log("widget:name")
   })
-  hud.register("widget:title", function(  ){
+  hud("widget:title", function(  ){
     console.log("widget:title")
   })
-  hud.register("widget:something", function(  ){
+  hud("widget:something", function(  ){
     console.log("widget:something")
   })
-  hud.register("widget:button", function(  ){
+  hud("widget:button", function(  ){
     console.log("widget:button")
   })
-  hud.register("button", function(  ){
+  hud("button", function(  ){
     console.log("button")
   })
 
-  var widget = hud.create("widget", function(  ){
-    debugger
-    this.extendWithSubRoles("widget")
+  var widget = hud("widget", function(  ){
   })
-  console.log("widget", widget)
+  console.log("widget", widget())
 
-  var panel = hud.create("panel", function(  ){
-    debugger
-    this.extendWithRoles("button")
-    this.role("panel:title", function(  ){
-
-    })
+  var panel = hud("panel", function(  ){
   })
-  console.log("panel", panel)
+  console.log("panel", panel())
 
 </script>
 

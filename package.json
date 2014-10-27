@@ -2,7 +2,7 @@
   "name": "hud",
   "version": "1.15.3",
   "description": "",
-  "repository": "",
+  "repository": "https://github.com/tunderdomb/hud",
   "author": "tunderdomb",
   "license": "MIT",
   "devDependencies": {
